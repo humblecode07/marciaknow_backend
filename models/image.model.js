@@ -7,4 +7,4 @@ const imageSchema = new mongoose.Schema({
    file_path: { type: String, required: false },
 });
 
-module.exports = mongoose.model("Image", imageSchema);
+module.exports = imageSchema;

@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
 const navigationPathSchema = require("./navigationPath.model");
 const navigationGuideSchema = require("./navigationGuide.model");
+const imageSchema = require("./image.model");
 
 const roomSchema = new mongoose.Schema({
    name: { type: String, required: true },
    description: { type: String, required: false },
    floor: { type: Number, required: true },
-   navigationGuide: [navigationGuideSchema],
    image: [imageSchema],
    navigationPath: [navigationPathSchema],
    addedBy: { type: String, required: true },
@@ -15,4 +15,11 @@ const roomSchema = new mongoose.Schema({
    editedByDate: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model("Room", roomSchema);
+roomSchema.pre("save", function (next) {
+   if (this.isModified("editedBy")) {
+      this.editedByDate = Date.now();
+   }
+   next();
+});
+
+module.exports = roomSchema;
