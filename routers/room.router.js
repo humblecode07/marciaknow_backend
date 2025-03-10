@@ -1,13 +1,12 @@
 const express = require('express');
-const building_controller = require('../controllers/building.controller');
+const room_controller = require('../controllers/room.controller');
 const upload = require('../middleware/imageUpload');
 const router = express.Router();
 
 /* GET */
-router.get('/', building_controller.get_buildings);
 
 /* POST */
-router.post('/', building_controller.add_building);
+router.post('/', room_controller.add_room);
 
 /* PATCH */
 

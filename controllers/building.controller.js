@@ -2,6 +2,16 @@ const Building = require('../models/building.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
 
+exports.get_buildings = asyncHandler(async (req, res) => {
+   try {
+      const buildings = await Building.find(); 
+      res.json(buildings);
+   }
+   catch (error) {
+      throw new Error('Unexpected error precedented: ' + error.message);
+   }
+});
+
 exports.add_building = asyncHandler(async (req, res) => {
    try {
       const newBuilding = await Building.create({

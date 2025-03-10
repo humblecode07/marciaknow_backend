@@ -9,7 +9,7 @@ const roomSchema = new mongoose.Schema({
    floor: { type: Number, required: true },
    image: [imageSchema],
    navigationPath: [navigationPathSchema],
-   addedBy: { type: String, required: true },
+   addedBy: { type: String, required: false },
    addedByDate: { type: Date, default: Date.now },
    editedBy: { type: String, required: false },
    editedByDate: { type: Date, default: Date.now }
