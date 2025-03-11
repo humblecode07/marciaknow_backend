@@ -24,7 +24,7 @@ const buildingSchema = new mongoose.Schema({
    image: [imageSchema],
    navigationGuide: {
       type: Map,
-      of: navigationGuideSchema, // one navigation guide per kiosk
+      of: [navigationGuideSchema], // one navigation guide per kiosk
       default: {}
    },
 });

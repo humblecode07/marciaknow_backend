@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const navigationPathSchema = require("./navigationPath.model");
 const navigationGuideSchema = require("./navigationGuide.model");
 const imageSchema = require("./image.model");
 
@@ -8,7 +7,8 @@ const roomSchema = new mongoose.Schema({
    description: { type: String, required: false },
    floor: { type: Number, required: true },
    image: [imageSchema],
-   navigationPath: [navigationPathSchema],
+   navigationPath: { type: String, required: true }, // instead of using navpathschema, ill just use this
+   navigationGuide: [navigationGuideSchema],
    addedBy: { type: String, required: false },
    addedByDate: { type: Date, default: Date.now },
    editedBy: { type: String, required: false },

@@ -10,6 +10,7 @@ router.get('/', building_controller.get_buildings);
 router.post('/', building_controller.add_building);
 
 /* PATCH */
+router.post('/:buildingId', building_controller.edit_building);
 
 /* DELETE */
 

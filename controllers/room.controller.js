@@ -13,11 +13,17 @@ exports.add_room = asyncHandler(async (req, res) => {
 
       let rooms = building.existingRoom.get(req.body.kioskID) || [];
 
+      const navigationGuide = req.body.navigationGuide?.map(guide => ({
+         icon: guide.icon,
+         text: guide.text
+      })) || [];
+
       const newRoom = {
          name: req.body.name,
          description: req.body.description,
          floor: req.body.floor,
-         navigationPath: [{ path: req.body.path }]
+         navigationPath: req.body.path,
+         navigationGuide: navigationGuide
       };
 
       rooms.push(newRoom);

@@ -10,6 +10,7 @@ router.post('/', room_controller.add_room);
 
 /* PATCH */
 
+
 /* DELETE */
 
 module.exports = router;
