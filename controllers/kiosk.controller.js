@@ -14,6 +14,23 @@ exports.get_kiosks = asyncHandler(async (req, res) => {
    }
 })
 
+exports.get_kiosk = asyncHandler(async (req, res) => {
+   const { kioskID } = req.params;
+
+   console.log(kioskID);
+
+   try {
+      const kiosk = await Kiosk.findOne({ kioskID }).exec();
+
+      if (!kiosk) return res.status(404).json({ message: "Kiosk not found." });
+
+      res.json(kiosk);
+   }
+   catch (error) {
+      throw new Error('Unexpected error precedented: ' + error.message);
+   }
+})
+
 exports.add_kiosk = asyncHandler(async (req, res) => {
    try {
       const newKiosk = await Kiosk.create({
