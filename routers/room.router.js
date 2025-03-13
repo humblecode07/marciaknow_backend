@@ -4,6 +4,7 @@ const upload = require('../middleware/imageUpload');
 const router = express.Router();
 
 /* GET */
+// router.get('/', room_controller.get_rooms);
 
 /* POST */
 router.post('/', room_controller.add_room);

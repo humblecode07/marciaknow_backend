@@ -4,6 +4,16 @@ const mongoose = require("mongoose");
 const asyncHandler = require('express-async-handler');
 const kiosk_service = require('../services/kiosk.service');
 
+exports.get_kiosks = asyncHandler(async (req, res) => {
+   try {
+      const kiosks = await Kiosk.find();
+      res.json(kiosks);
+   }
+   catch (error) {
+      throw new Error('Unexpected error precedented: ' + error.message);
+   }
+})
+
 exports.add_kiosk = asyncHandler(async (req, res) => {
    try {
       const newKiosk = await Kiosk.create({
