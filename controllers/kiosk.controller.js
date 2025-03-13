@@ -72,3 +72,74 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
       });
    }
 });
+
+exports.edit_kiosk = asyncHandler(async (req, res) => {
+   const { kioskID } = req.params;
+
+   try {
+      const kiosk = await Kiosk.findOne({ kioskID });
+
+      if (!kiosk) return res.status(404).json({ message: "Kiosk not found." });
+      
+      kiosk.name = req.body.name || kiosk.name;
+      kiosk.location = req.body.location || kiosk.location;
+      kiosk.coordinates = {
+         x: req.body.coordinates?.x || kiosk.coordinates.x,
+         y: req.body.coordinates?.y || kiosk.coordinates.y
+      };
+
+      // Save the updated kiosk
+      await kiosk.save();
+
+      res.status(200).json({
+         success: true,
+         message: "Kiosk updated successfully!",
+         data: kiosk
+      });
+   } catch (error) {
+      res.status(400).json({
+         success: false,
+         message: "Error updating kiosk: " + error.message
+      });
+   }
+});
+
+
+exports.delete_kiosk = asyncHandler(async (req, res) => {
+   const { kioskID } = req.params;
+
+   try {
+      const deletedKiosk = await Kiosk.findOneAndDelete({ kioskID });
+
+      if (!deletedKiosk) {
+         return res.status(404).json({
+            success: false,
+            message: "Kiosk not found."
+         });
+      }
+
+      // Step 2: Remove the kioskID from each building
+      const buildings = await Building.find();
+
+      for (const building of buildings) {
+         building.existingRoom.delete(kioskID);
+
+         building.navigationPath.delete(kioskID);
+
+         building.navigationGuide.delete(kioskID);
+
+         await building.save();
+      }
+
+      res.status(200).json({
+         success: true,
+         message: "Kiosk deleted successfully!"
+      });
+   }
+   catch (error) {
+      res.status(400).json({
+         success: false,
+         message: error.message
+      });
+   }
+});

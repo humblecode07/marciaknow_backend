@@ -10,7 +10,9 @@ router.get('/:kioskID', kiosk_controller.get_kiosk);
 router.post('/', kiosk_controller.add_kiosk);
 
 /* PATCH */
+router.patch('/:kioskID', kiosk_controller.edit_kiosk);
 
 /* DELETE */
+router.delete('/:kioskID', kiosk_controller.delete_kiosk);
 
 module.exports = router;
