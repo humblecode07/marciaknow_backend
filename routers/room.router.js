@@ -7,7 +7,7 @@ const router = express.Router();
 // router.get('/', room_controller.get_rooms);
 
 /* POST */
-router.post('/', room_controller.add_room);
+router.post('/:buildingID/:kioskID', upload.array('image'), room_controller.add_room);
 
 /* PATCH */
 

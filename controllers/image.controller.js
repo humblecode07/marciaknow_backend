@@ -91,7 +91,6 @@ exports.add_image = asyncHandler(async (req, res) => {
       });
    }
    else if (type === "room") {
-      // Find the building that contains a room with the given ID
       const building = await Building.findOne();
 
       if (!building) throw new Error("No buildings found");
@@ -100,7 +99,6 @@ exports.add_image = asyncHandler(async (req, res) => {
       let targetKioskID = null;
       let targetRoomIndex = null;
 
-      // Loop through the existingRoom Map to find the room and its position
       for (const [kioskID, rooms] of building.existingRoom.entries()) {
          for (let i = 0; i < rooms.length; i++) {
             if (rooms[i]._id.toString() === id) {
