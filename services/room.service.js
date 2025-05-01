@@ -9,10 +9,10 @@ const { v4: uuidv4 } = require('uuid');
 exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => {
    try {
       const allowedFormats = ['image/jpeg', 'image/png'];
-      const minWidth = 1920;
-      const minHeight = 1080;
-      const maxWidth = 3840;
-      const maxHeight = 2160;
+      // const minWidth = 1920;
+      // const minHeight = 1080;
+      // const maxWidth = 3840;
+      // const maxHeight = 2160;
 
       const imageDataArray = await Promise.all(
          files.map(async (file) => {
@@ -27,9 +27,9 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
             const { width, height } = await sharp(file.buffer).metadata();
    
             // Dimension validation
-            if (width < minWidth || height < minHeight || width > maxWidth || height > maxHeight) {
-               throw new Error(`Image dimensions are out of range. Must be between ${minWidth}x${minHeight} and ${maxWidth}x${maxHeight}.`);
-            }
+            // if (width < minWidth || height < minHeight || width > maxWidth || height > maxHeight) {
+            //    throw new Error(`Image dimensions are out of range. Must be between ${minWidth}x${minHeight} and ${maxWidth}x${maxHeight}.`);
+            // }
    
             // Generate a unique file name
             const originalFilename = file.originalname;
