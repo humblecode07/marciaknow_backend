@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const navigationGuideSchema = new mongoose.Schema({
    icon: { type: String, required: false }, // false for now
-   text: { type: String, required: false },
+   description: { type: String, required: false },
 });
 
 module.exports = navigationGuideSchema;
