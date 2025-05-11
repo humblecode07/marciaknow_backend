@@ -20,27 +20,27 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
             if (!allowedFormats.includes(file.mimetype)) {
                throw new Error("Invalid file format. Only JPEG and PNG are allowed.");
             }
-   
+
             console.log(file);
-   
+
             // Extract metadata
             const { width, height } = await sharp(file.buffer).metadata();
-   
+
             // Dimension validation
             // if (width < minWidth || height < minHeight || width > maxWidth || height > maxHeight) {
             //    throw new Error(`Image dimensions are out of range. Must be between ${minWidth}x${minHeight} and ${maxWidth}x${maxHeight}.`);
             // }
-   
+
             // Generate a unique file name
             const originalFilename = file.originalname;
             const fileExtension = originalFilename.split('.').pop();
             const imageUUID = uuidv4() + '.' + fileExtension;
-   
+
             // Process the image and upload to GridFS
             const processedImage = await sharp(file.buffer).toBuffer();
             const readBufferStream = Readable.from(processedImage);
             const uploadStream = new mongoose.mongo.GridFSBucket(mongoose.connection.db).openUploadStream(imageUUID);
-   
+
             await new Promise((resolve, reject) => {
                readBufferStream.pipe(uploadStream);
                uploadStream.on('error', (error) => {
@@ -49,7 +49,7 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
                });
                uploadStream.on('finish', resolve);
             });
-   
+
             // Return metadata for each image
             return {
                file_path: imageUUID,
@@ -80,11 +80,21 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
          text: guide.text
       }));
 
+      let navigationPath = [];
+
+      if (roomData.path) {
+         try {
+            navigationPath = JSON.parse(roomData.path);
+         } catch (err) {
+            console.error('Invalid navigation path JSON:', err);
+         }
+      }
+
       const newRoom = {
          name: roomData.name,
          description: roomData.description,
          floor: roomData.floor,
-         navigationPath: roomData.path,
+         navigationPath: navigationPath,
          navigationGuide: navigationGuide,
          image: imageData || []
       };
@@ -97,7 +107,7 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
       await building.save();
 
       return newRoom;
-   } 
+   }
    catch (error) {
       console.error("Error adding room:", error);
       throw error;

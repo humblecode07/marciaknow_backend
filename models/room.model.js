@@ -7,7 +7,12 @@ const roomSchema = new mongoose.Schema({
    description: { type: String, required: false },
    floor: { type: Number, required: true },
    image: [imageSchema],
-   navigationPath: { type: String, required: true }, // instead of using navpathschema, ill just use this
+   navigationPath: [
+      {
+         x: { type: Number, required: true },
+         y: { type: Number, required: true }
+      }
+   ],
    navigationGuide: [navigationGuideSchema],
    addedBy: { type: String, required: false },
    addedByDate: { type: Date, default: Date.now },

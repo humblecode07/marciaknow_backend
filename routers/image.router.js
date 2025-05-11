@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/:filename', image_controller.get_image);
 
 /* POST */
-router.post('/:type/:id', upload.array('image'), image_controller.add_image);
+router.post('/:type/:buildingID/:roomID?', upload.array('images[]'), image_controller.add_images);
 
 /* PATCH */
 
