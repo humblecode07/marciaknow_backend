@@ -104,10 +104,10 @@ exports.add_room = asyncHandler(async (req, res) => {
 
 exports.edit_room = asyncHandler(async (req, res) => {
    try {
-      const { buildingID, kioskID } = req.params;
+      const { buildingID, roomID, kioskID } = req.params;
       const files = req.files;
 
-      const room = await room_service.add_room(buildingID, kioskID, files, req.body);
+      const room = await room_service.edit_room(buildingID, kioskID, roomID, files, req.body);
 
       return res.status(201).json({
          success: true,
