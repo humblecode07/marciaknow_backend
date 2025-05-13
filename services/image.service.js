@@ -91,8 +91,8 @@ exports.delete_images = async (imageIdsToDelete) => {
             await bucket.delete(file._id);
             console.log(`Successfully deleted image with filename: ${image.file_path} (ID: ${file._id})`);
          }
-      } catch (err) {
-         console.error(`Failed to delete image: ${image.file_path}`, err.message);
+      } catch (error) {
+         console.error(`Failed to delete image: ${image.file_path}`, error.message);
       }
    }
 };

@@ -142,3 +142,39 @@ exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, room
    // Return the updated room data
    return rooms[roomIndex];
 });
+
+exports.delete_room = asyncHandler(async (buildingID, kioskID, roomID) => {
+   try {
+      const building = await Building.findById(buildingID);
+      if (!building) throw new Error('Building not found');
+
+      console.log('building', building);
+
+      const rooms = building.existingRoom?.get(kioskID);
+      if (!rooms) throw new Error('No rooms found for this kiosk');
+
+      const roomIndex = rooms.findIndex(room => room._id.toString() === roomID);
+      if (roomIndex === -1) throw new Error('Room not found');
+
+      // Optional: get images for cleanup
+      const imagesToDelete = rooms[roomIndex].image || [];
+
+      // Remove the room
+      rooms.splice(roomIndex, 1);
+
+      // Update the building
+      building.markModified(`existingRoom.${kioskID}`);
+      await building.save();
+
+      // Delete images if needed
+      if (imagesToDelete.length > 0) {
+         const ids = imagesToDelete.map(img => img._id.toString());
+         await imageService.delete_images(ids);
+      }
+
+      console.log(`Deleted room ${roomID} from kiosk ${kioskID} in building ${buildingID}`);
+   }
+   catch (error) {
+      console.error(`Failed to remove ${roomID} of ${buildingID} from ${kioskID}`, error.message);
+   }
+});

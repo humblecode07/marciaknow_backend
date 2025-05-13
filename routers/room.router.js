@@ -14,5 +14,6 @@ router.post('/:buildingID/:kioskID', upload.array('images[]'), room_controller.a
 router.patch('/:buildingID/:kioskID/:roomID', upload.array('images[]'), room_controller.edit_room);
 
 /* DELETE */
+router.delete('/:buildingID/:kioskID/:roomID', room_controller.delete_room);
 
 module.exports = router;
