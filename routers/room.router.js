@@ -11,7 +11,7 @@ router.get('/:buildingID/:roomID', room_controller.get_room_from_building);
 router.post('/:buildingID/:kioskID', upload.array('images[]'), room_controller.add_room);
 
 /* PATCH */
-// router.patch('/:buildingID/:kioskID', upload.array('images[]'), room_controller.edit_room);
+router.patch('/:buildingID/:kioskID/:roomID', upload.array('images[]'), room_controller.edit_room);
 
 /* DELETE */
 

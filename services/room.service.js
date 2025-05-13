@@ -1,10 +1,6 @@
 const Building = require('../models/building.model');
 const Kiosk = require('../models/kiosk.model');
-const mongoose = require('mongoose');
-const sharp = require('sharp');
-const { Readable } = require('stream');
 const asyncHandler = require('express-async-handler');
-const { v4: uuidv4 } = require('uuid');
 const imageService = require('./image.service');
 
 exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => {
@@ -58,7 +54,6 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
    }
 });
 
-
 exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, roomData) => {
    const building = await Building.findById(buildingID);
    if (!building) throw new Error("Building not found");
@@ -74,9 +69,10 @@ exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, room
 
    const existingRoom = rooms[roomIndex];
 
-   // Parse and prepare incoming data
+   // Handle image processing
    const newImages = files?.length ? await imageService.process_images(files) : [];
 
+   // Process navigation guide
    const navigationGuide = roomData.navigationGuide
       ? JSON.parse(roomData.navigationGuide).map(guide => ({
          icon: guide.icon,
@@ -84,6 +80,7 @@ exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, room
       }))
       : [];
 
+   // Process navigation path
    let navigationPath = [];
    if (roomData.path) {
       try {
@@ -93,27 +90,55 @@ exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, room
       }
    }
 
-   // Compare old vs new images to find which ones to delete
-   const updatedImageIDs = roomData.imageIDs || []; // frontend should send list of retained image IDs
-   const imagesToDelete = existingRoom.image.filter(img => !updatedImageIDs.includes(img._id.toString()));
+   // Ensure imageIDs is properly parsed if it came as a string
+   let updatedImageIDs = [];
+   if (roomData.imageIDs) {
+      updatedImageIDs = Array.isArray(roomData.imageIDs)
+         ? roomData.imageIDs
+         : JSON.parse(roomData.imageIDs);
+   }
+
+   // Find images that need to be deleted - we'll delete by file_path instead of _id
+   const imagesToDelete = existingRoom.image.filter(img =>
+      !updatedImageIDs.includes(img._id.toString())
+   );
+
+   console.log('Images to delete:', imagesToDelete.map(img => img.file_path));
 
    // Delete unused images from GridFS
-   await imageService.delete_images(imagesToDelete);
+   if (imagesToDelete.length > 0) {
+      try {
+         await imageService.delete_images(imagesToDelete);
+      } catch (deleteErr) {
+         console.error('Error during image deletion:', deleteErr);
+         // Continue execution even if image deletion fails
+      }
+   }
 
-   // Update room object
+   // Make sure we properly filter retained images
+   const retainedImages = existingRoom.image.filter(img =>
+      updatedImageIDs.includes(img._id.toString())
+   );
+
+   // Update the room with new data and images
    rooms[roomIndex] = {
-      ...existingRoom._doc, // maintain _id and other untouched props
+      ...existingRoom._doc, // preserve existing fields that shouldn't change
       name: roomData.name,
       description: roomData.description,
       floor: roomData.floor,
       navigationPath,
       navigationGuide,
-      image: [...existingRoom.image.filter(img => updatedImageIDs.includes(img._id.toString())), ...newImages]
+      image: [
+         ...retainedImages, // Retain selected old images
+         ...newImages // Add new images
+      ]
    };
 
+   // Update the building document
    building.existingRoom.set(kioskID, rooms);
    building.markModified('existingRoom');
    await building.save();
 
+   // Return the updated room data
    return rooms[roomIndex];
-})
+});
