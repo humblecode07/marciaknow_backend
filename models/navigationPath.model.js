@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 
 const navigationPathSchema = new mongoose.Schema({
-   path: { type: String, required: false },
-});
+   x: { type: Number, required: false },
+   y: { type: Number, required: false }
+}, { _id: false });
 
 module.exports = navigationPathSchema;

@@ -18,14 +18,14 @@ const buildingSchema = new mongoose.Schema({
    },
    navigationPath: {
       type: Map,
-      of: navigationPathSchema, // one navigation path per kiosk
-      default: {}
+      of: [navigationPathSchema], // one navigation path per kiosk
+      default: () => new Map()
    },
    image: [imageSchema],
    navigationGuide: {
       type: Map,
       of: [navigationGuideSchema], // one navigation guide per kiosk
-      default: {}
+      default: () => new Map()
    },
 });
 

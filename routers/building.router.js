@@ -5,6 +5,7 @@ const router = express.Router();
 
 /* GET */
 router.get('/', building_controller.get_buildings);
+router.get('/:buildingID', building_controller.get_building);
 
 /* POST */
 router.post('/', building_controller.add_building);
