@@ -2,6 +2,7 @@ const Building = require('../models/building.model');
 const Kiosk = require('../models/kiosk.model');
 const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
+const imageService = require('../services/image.service');
 
 exports.get_buildings = asyncHandler(async (req, res) => {
    try {
@@ -55,7 +56,8 @@ exports.add_building = asyncHandler(async (req, res) => {
          message: "Building added successfully!",
          data: newBuilding
       });
-   } catch (error) {
+   }
+   catch (error) {
       res.status(400).json({
          success: false,
          message: error.message
@@ -63,44 +65,95 @@ exports.add_building = asyncHandler(async (req, res) => {
    }
 });
 
-
 exports.edit_building = asyncHandler(async (req, res) => {
-   const { buildingId } = req.params;
+   const { buildingId, kioskID } = req.params;
+
    try {
       const building = await Building.findById(buildingId);
       if (!building) throw new Error("Building not found");
 
-      // Update building fields
-      building.name = req.body.name || building.name;
-      building.description = req.body.description || building.description;
-      building.path = req.body.path || building.path;
-      building.numberOfFloor = req.body.numberOfFloor || building.numberOfFloor;
+      const { name, description, path, floor } = req.body;
+      const files = req.files;
 
-      // Update nested objects if provided in the request
-      if (req.body.existingRoom) {
-         building.existingRoom = req.body.existingRoom;
+      // 🔹 Basic building info
+      building.name = name || building.name;
+      building.description = description || building.description;
+      building.numberOfFloor = floor || building.numberOfFloor;
+
+      // 🔹 Process uploaded images
+      const newImages = files?.length ? await imageService.process_images(files) : [];
+
+      // 🔹 Handle retained image IDs
+      let retainedImageIDs = [];
+      if (req.body.imageIDs) {
+         retainedImageIDs = Array.isArray(req.body.imageIDs)
+            ? req.body.imageIDs
+            : JSON.parse(req.body.imageIDs);
       }
 
-      if (req.body.navigationPath) {
-         building.navigationPath = req.body.navigationPath;
+      // 🔹 Filter out deleted images
+      const imagesToDelete = building.image?.filter(img =>
+         !retainedImageIDs.includes(img._id.toString())
+      ) || [];
+
+      // 🔹 Delete unused images from GridFS
+      if (imagesToDelete.length > 0) {
+         try {
+            await imageService.delete_images(imagesToDelete);
+         } catch (deleteErr) {
+            console.error('Error deleting images:', deleteErr);
+         }
       }
 
+      // 🔹 Retain selected images
+      const retainedImages = building.image?.filter(img =>
+         retainedImageIDs.includes(img._id.toString())
+      ) || [];
+
+      // 🔹 Final update to images
+      building.image = [
+         ...retainedImages,
+         ...newImages
+      ];
+
+      // 🔹 Update navigationGuide for this kiosk
       if (req.body.navigationGuide) {
-         building.navigationGuide = req.body.navigationGuide;
+         const guideArray = JSON.parse(req.body.navigationGuide);
+
+         if (!Array.isArray(guideArray)) {
+            throw new Error("navigationGuide should be an array");
+         }
+
+         if (!building.navigationGuide) building.navigationGuide = new Map();
+
+         // Set the entire guide array under this kioskID
+         building.navigationGuide.set(kioskID, guideArray);
       }
 
-      // Save the updated building
+      // 🔹 Update navigationPath for this kiosk
+      if (path) {
+         const pathCoords = JSON.parse(path);
+         if (!building.navigationPath) building.navigationPath = new Map();
+
+         // Ensure pathCoords is an array
+         building.navigationPath.set(kioskID, Array.isArray(pathCoords) ? pathCoords : [pathCoords]);
+      }
+
+      console.log(building);
+
       const updatedBuilding = await building.save();
 
       res.status(200).json({
          success: true,
          message: "Building updated successfully!",
-         data: updatedBuilding
+         data: updatedBuilding,
       });
+
    } catch (error) {
+      console.error("Edit building error:", error);
       res.status(400).json({
          success: false,
-         message: error.message
+         message: error.message,
       });
    }
 });

@@ -11,7 +11,7 @@ router.get('/:buildingID', building_controller.get_building);
 router.post('/', building_controller.add_building);
 
 /* PATCH */
-router.post('/:buildingId', building_controller.edit_building);
+router.patch('/:buildingId/:kioskID', upload.array('images[]'), building_controller.edit_building);
 
 /* DELETE */
 

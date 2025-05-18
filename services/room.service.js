@@ -77,7 +77,6 @@ exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => 
    }
 });
 
-
 exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, roomData) => {
    const building = await Building.findById(buildingID);
    if (!building) throw new Error("Building not found");

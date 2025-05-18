@@ -46,14 +46,27 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
       const buildings = await Building.find();
 
       for (const building of buildings) {
-         // Use proper Map methods for setting values
-         // Initialize with an empty array since your schema expects an array of roomSchema
-         building.existingRoom.set(newKiosk.kioskID, []);
+         // Pick any existing kioskID as a reference
+         const existingKioskIDs = Array.from(building.existingRoom.keys());
+         let inheritedRooms = [];
 
-         // For navigationPath, set an empty object that conforms to navigationPathSchema
+         if (existingKioskIDs.length > 0) {
+            const refRooms = building.existingRoom.get(existingKioskIDs[0]) || [];
+
+            // Only copy name, description, floor, and images
+            inheritedRooms = refRooms.map(room => ({
+               name: room.name,
+               description: room.description,
+               floor: room.floor,
+               image: room.image || []
+            }));
+         }
+
+         // Set the inherited room data for the new kioskID
+         building.existingRoom.set(newKiosk.kioskID, inheritedRooms);
+
+         // Initialize empty navigationPath and navigationGuide for now
          building.navigationPath.set(newKiosk.kioskID, {});
-
-         // For navigationGuide, set an empty object that conforms to navigationGuideSchema
          building.navigationGuide.set(newKiosk.kioskID, {});
 
          await building.save();
@@ -61,7 +74,7 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
 
       res.status(201).json({
          success: true,
-         message: "Kiosk added successfully!",
+         message: "Kiosk added successfully and room data inherited.",
          data: newKiosk
       });
    }
@@ -73,6 +86,7 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
    }
 });
 
+
 exports.edit_kiosk = asyncHandler(async (req, res) => {
    const { kioskID } = req.params;
 
@@ -80,7 +94,7 @@ exports.edit_kiosk = asyncHandler(async (req, res) => {
       const kiosk = await Kiosk.findOne({ kioskID });
 
       if (!kiosk) return res.status(404).json({ message: "Kiosk not found." });
-      
+
       kiosk.name = req.body.name || kiosk.name;
       kiosk.location = req.body.location || kiosk.location;
       kiosk.coordinates = {
