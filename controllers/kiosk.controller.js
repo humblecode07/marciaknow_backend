@@ -157,3 +157,26 @@ exports.delete_kiosk = asyncHandler(async (req, res) => {
       });
    }
 });
+
+exports.ping_kiosk = asyncHandler(async (req, res) => {
+   try {
+      const kiosk = await Kiosk.findOneAndUpdate(
+         { kioskID: req.params.kioskID },
+         {
+            $set: {
+               lastCheckIn: new Date(),
+               status: 'online'
+            }
+         },
+         { new: true }
+      );
+
+      if (!kiosk) {
+         return res.status(404).json({ success: false, message: 'Kiosk not found' });
+      }
+
+      res.json({ success: true, message: 'Ping successful', kiosk });
+   } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+   }
+})

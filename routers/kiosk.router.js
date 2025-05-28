@@ -8,6 +8,7 @@ router.get('/:kioskID', kiosk_controller.get_kiosk);
 
 /* POST */
 router.post('/', kiosk_controller.add_kiosk);
+router.post('/ping/:kioskID', kiosk_controller.ping_kiosk);
 
 /* PATCH */
 router.patch('/:kioskID', kiosk_controller.edit_kiosk);
