@@ -43,6 +43,40 @@ exports.get_all_rooms = asyncHandler(async (req, res) => {
    }
 });
 
+exports.get_rooms_for_kiosk = asyncHandler(async (req, res) => {
+   const { kioskID } = req.params;
+
+   try {
+      const buildings = await Building.find().lean();
+      let roomsForKiosk = [];
+
+      buildings.forEach(building => {
+         const existingRoom = building.existingRoom;
+
+         if (existingRoom && typeof existingRoom === 'object') {
+            // Check if this building has rooms for the kioskID we want
+            if (existingRoom[kioskID] && Array.isArray(existingRoom[kioskID])) {
+               existingRoom[kioskID].forEach(room => {
+                  roomsForKiosk.push({
+                     ...room,
+                     kioskID,
+                     buildingID: building._id,
+                     buildingName: building.name
+                  });
+               });
+            }
+         }
+      });
+
+      res.json(roomsForKiosk);
+   }
+   catch (error) {
+      console.error('Error fetching rooms:', error);
+      res.status(500).json({ message: 'Unexpected error: ' + error.message });
+   }
+});
+
+
 exports.get_room_from_building = asyncHandler(async (req, res) => {
    try {
       const { buildingID, roomID } = req.params;

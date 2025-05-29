@@ -14,6 +14,26 @@ exports.get_buildings = asyncHandler(async (req, res) => {
    }
 });
 
+exports.get_buildings_based_from_kiosk = asyncHandler(async (req, res) => {
+  const { kioskID } = req.params;
+
+  try {
+    const buildings = await Building.find({
+      $or: [
+        { [`existingRoom.${kioskID}`]: { $exists: true } },
+        { [`navigationPath.${kioskID}`]: { $exists: true } },
+        { [`navigationGuide.${kioskID}`]: { $exists: true } }
+      ]
+    });
+
+    res.json(buildings);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Unexpected error precedented: ' + error.message });
+  }
+});
+
+
 exports.get_building = asyncHandler(async (req, res) => {
    const { buildingID } = req.params;
 

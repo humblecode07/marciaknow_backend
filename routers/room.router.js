@@ -5,6 +5,7 @@ const router = express.Router();
 
 /* GET */
 router.get('/', room_controller.get_all_rooms); 
+router.get('/:kioskID', room_controller.get_rooms_for_kiosk); 
 router.get('/:buildingID/:roomID', room_controller.get_room_from_building); 
 
 /* POST */
