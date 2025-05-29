@@ -13,6 +13,7 @@ const roomRouter = require("./routers/room.router");
 const kioskRouter = require("./routers/kiosk.router");
 const imageRouter = require('./routers/image.router');
 const iconRouter = require('./routers/navigationIcon.router');
+const groqRouter = require('./routers/groq.router');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/room", roomRouter);
 app.use("/kiosk", kioskRouter);
 app.use("/image", imageRouter);
 app.use("/icon", iconRouter);
+app.use("/groq", groqRouter);
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {
