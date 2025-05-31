@@ -6,6 +6,7 @@ const adminRole = Number(process.env.ROLE_ADMIN);
 const adminSchema = new mongoose.Schema({
    full_name: { type: String, required: true, maxLength: 420 },
    email: { type: String, required: true, unique: true, match: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/ },
+   username: { type: String },
    password: { type: String, required: true, minLength: 8, maxLength: 64 },
    profile: { type: String },
    roles: {

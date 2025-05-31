@@ -22,6 +22,8 @@ exports.log_in = asyncHandler(async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
    }
 
+   console.log(email, password);
+
    const roles = foundAdmin.roles.filter(Boolean);
 
    const accessToken = jwt.sign(
