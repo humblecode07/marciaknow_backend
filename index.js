@@ -18,13 +18,15 @@ const adminsRouter = require('./routers/admin.router');
 const authRouter = require('./routers/auth.router');
 const refreshTokenRouter = require('./routers/refreshToken.router');
 const logoutRouter = require('./routers/logout.router');
+const qrScanLogRouter = require('./routers/qrScanLog.router');
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 connectDB();
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin: 'http://localhost:5173',
     credentials: true
@@ -41,6 +43,7 @@ app.use("/admin", adminsRouter);
 app.use("/auth", authRouter);
 app.use("/refresh", refreshTokenRouter);
 app.use("/logout", logoutRouter);
+app.use("/qrscan", qrScanLogRouter);
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {

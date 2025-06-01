@@ -181,7 +181,7 @@ exports.getProfileImage = asyncHandler(async (req, res) => {
 
 exports.updateAdmin = asyncHandler(async (req, res, next) => {
    const { adminId } = req.params;
-   const { full_name, email, password, contact, about_me, username } = req.body;
+   const { full_name, email, password, contact, description, username } = req.body;
 
    console.log('Update request body:', req.body);
    console.log('Admin ID:', adminId);
@@ -212,7 +212,7 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
       if (full_name) updateData.full_name = full_name;
       if (email) updateData.email = email;
       if (contact) updateData.contact = contact;
-      if (about_me !== undefined) updateData.about_me = about_me; // Allow empty string
+      if (description !== undefined) updateData.description = description; // Allow empty string
       if (username) updateData.username = username;
 
       if (password) {
@@ -259,7 +259,7 @@ exports.updateAdmin = asyncHandler(async (req, res, next) => {
          adminId,
          { $set: updateData },
          { new: true, runValidators: true }
-      ).select('-password'); 
+      ).select('-password');
 
       if (!updatedAdmin) {
          if (newProfileImageData) {
@@ -304,7 +304,7 @@ exports.updateAdminField = asyncHandler(async (req, res, next) => {
 
    console.log(`Updating field: ${field} for admin: ${adminId}`);
 
-   const allowedFields = ['full_name', 'email', 'contact', 'about_me', 'username'];
+   const allowedFields = ['full_name', 'email', 'contact', 'description', 'username'];
 
    if (!allowedFields.includes(field)) {
       return res.status(400).json({ message: 'Invalid field specified' });
@@ -346,7 +346,7 @@ exports.updateAdminField = asyncHandler(async (req, res, next) => {
          admin: updatedAdmin
       });
 
-   } 
+   }
    catch (error) {
       console.error(`Error updating ${field}:`, error.message);
       return res.status(500).json({ message: `Failed to update ${field}` });
@@ -390,9 +390,23 @@ exports.updateAdminPassword = asyncHandler(async (req, res, next) => {
          message: "Password updated successfully"
       });
 
-   } 
+   }
    catch (error) {
       console.error('Password update error:', error.message);
       return res.status(500).json({ message: 'Failed to update password' });
    }
 });
+
+exports.updateAdminStatus = asyncHandler(async (req, res, next) => {
+   const { status } = req.body;
+   const adminId = req.params.adminId;
+
+   console.log('adminId', adminId)
+
+   await Admin.findByIdAndUpdate(adminId, {
+      status,
+      lastSeen: new Date()
+   });
+
+   res.send({ success: true });
+})

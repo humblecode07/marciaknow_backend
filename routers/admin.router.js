@@ -14,4 +14,7 @@ router.put('/:adminId', upload.single('image'), admin_controller.updateAdmin);
 router.patch('/:adminId/field', admin_controller.updateAdminField);
 router.patch('/:adminId/password', admin_controller.updateAdminPassword);
 
+/* PUT request user create */
+router.put('/:id/status', admin_controller.updateAdminStatus);
+
 module.exports = router;

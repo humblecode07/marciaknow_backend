@@ -22,7 +22,10 @@ exports.log_in = asyncHandler(async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
    }
 
-   console.log(email, password);
+   if (!process.env.REFRESH_TOKEN_SECRET || !process.env.ACCESS_TOKEN_SECRET) {
+      console.error('REFRESH_TOKEN_SECRET is not defined');
+      return res.status(500).json({ message: 'Server configuration error' });
+   }
 
    const roles = foundAdmin.roles.filter(Boolean);
 
@@ -47,10 +50,12 @@ exports.log_in = asyncHandler(async (req, res, next) => {
    );
 
    foundAdmin.refreshToken = refreshToken;
+   foundAdmin.lastLogin = new Date;
+
    await foundAdmin.save();
+
    res.cookie('jwt', refreshToken, { httpOnly: true, secure: true, sameSite: 'None', maxAge: 24 * 60 * 60 * 1000 });
 
-   // Send response with tokens
    res.status(200).json({
       message: 'Authentication successful.',
       accessToken: accessToken,

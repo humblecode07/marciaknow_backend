@@ -1,19 +1,20 @@
 const express = require('express');
 const kiosk_controller = require('../controllers/kiosk.controller');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 
 /* GET */
 router.get('/', kiosk_controller.get_kiosks);
 router.get('/:kioskID', kiosk_controller.get_kiosk);
 
 /* POST */
-router.post('/', kiosk_controller.add_kiosk);
+router.post('/', authenticateToken, kiosk_controller.add_kiosk);
 router.post('/ping/:kioskID', kiosk_controller.ping_kiosk);
 
 /* PATCH */
-router.patch('/:kioskID', kiosk_controller.edit_kiosk);
+router.patch('/:kioskID', authenticateToken, kiosk_controller.edit_kiosk);
 
 /* DELETE */
-router.delete('/:kioskID', kiosk_controller.delete_kiosk);
+router.delete('/:kioskID', authenticateToken, kiosk_controller.delete_kiosk);
 
 module.exports = router;

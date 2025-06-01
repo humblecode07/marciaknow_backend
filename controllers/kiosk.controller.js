@@ -3,6 +3,11 @@ const Building = require('../models/building.model');
 const mongoose = require("mongoose");
 const asyncHandler = require('express-async-handler');
 const kiosk_service = require('../services/kiosk.service');
+const systemLogService = require('../services/systemLog.service');
+
+const extractAdminId = (req) => {
+   return req.user?.id || req.adminId;
+};
 
 exports.get_kiosks = asyncHandler(async (req, res) => {
    try {
@@ -46,14 +51,11 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
       const buildings = await Building.find();
 
       for (const building of buildings) {
-         // Pick any existing kioskID as a reference
          const existingKioskIDs = Array.from(building.existingRoom.keys());
          let inheritedRooms = [];
 
          if (existingKioskIDs.length > 0) {
             const refRooms = building.existingRoom.get(existingKioskIDs[0]) || [];
-
-            // Only copy name, description, floor, and images
             inheritedRooms = refRooms.map(room => ({
                name: room.name,
                description: room.description,
@@ -62,14 +64,17 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
             }));
          }
 
-         // Set the inherited room data for the new kioskID
          building.existingRoom.set(newKiosk.kioskID, inheritedRooms);
-
-         // Initialize empty navigationPath and navigationGuide for now
          building.navigationPath.set(newKiosk.kioskID, {});
          building.navigationGuide.set(newKiosk.kioskID, {});
 
          await building.save();
+      }
+
+      const adminId = extractAdminId(req);
+
+      if (adminId) {
+         systemLogService.logKioskActivity(adminId, newKiosk, 'create');
       }
 
       res.status(201).json({
@@ -95,15 +100,38 @@ exports.edit_kiosk = asyncHandler(async (req, res) => {
 
       if (!kiosk) return res.status(404).json({ message: "Kiosk not found." });
 
-      kiosk.name = req.body.name || kiosk.name;
-      kiosk.location = req.body.location || kiosk.location;
-      kiosk.coordinates = {
-         x: req.body.coordinates?.x || kiosk.coordinates.x,
-         y: req.body.coordinates?.y || kiosk.coordinates.y
-      };
+      const changes = {};
 
-      // Save the updated kiosk
+      if (req.body.name && req.body.name !== kiosk.name) {
+         changes.name = { old: kiosk.name, new: req.body.name };
+         kiosk.name = req.body.name;
+      }
+      if (req.body.location && req.body.location !== kiosk.location) {
+         changes.location = { old: kiosk.location, new: req.body.location };
+         kiosk.location = req.body.location;
+      }
+      if (req.body.coordinates) {
+         const coords = {};
+         if (req.body.coordinates.x && req.body.coordinates.x !== kiosk.coordinates.x) {
+            coords.x = { old: kiosk.coordinates.x, new: req.body.coordinates.x };
+            kiosk.coordinates.x = req.body.coordinates.x;
+         }
+         if (req.body.coordinates.y && req.body.coordinates.y !== kiosk.coordinates.y) {
+            coords.y = { old: kiosk.coordinates.y, new: req.body.coordinates.y };
+            kiosk.coordinates.y = req.body.coordinates.y;
+         }
+         if (Object.keys(coords).length > 0) {
+            changes.coordinates = coords;
+         }
+      }
+
       await kiosk.save();
+
+      const adminId = extractAdminId(req);
+
+      if (adminId) {
+         systemLogService.logKioskActivity(adminId, kiosk, 'edit', Object.keys(changes).length > 0 ? changes : null);
+      }
 
       res.status(200).json({
          success: true,
@@ -126,10 +154,7 @@ exports.delete_kiosk = asyncHandler(async (req, res) => {
       const deletedKiosk = await Kiosk.findOneAndDelete({ kioskID });
 
       if (!deletedKiosk) {
-         return res.status(404).json({
-            success: false,
-            message: "Kiosk not found."
-         });
+         return res.status(404).json({ success: false, message: "Kiosk not found." });
       }
 
       // Step 2: Remove the kioskID from each building
@@ -143,6 +168,11 @@ exports.delete_kiosk = asyncHandler(async (req, res) => {
          building.navigationGuide.delete(kioskID);
 
          await building.save();
+      }
+
+      const adminId = extractAdminId(req);
+      if (adminId) {
+         systemLogService.logKioskActivity(adminId, deletedKiosk, 'delete');
       }
 
       res.status(200).json({
