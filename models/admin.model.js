@@ -20,6 +20,7 @@ const adminSchema = new mongoose.Schema({
    lastLogin: { type: Date },
    joined: { type: Date },
    status: { type: String, required: true, enum: ["online", "offline"], default: "offline" },
+   isDisabled: { type: Boolean, default: false },
    systemLogs: {
       kiosk: {
          description: { type: String },

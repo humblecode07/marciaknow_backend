@@ -410,3 +410,45 @@ exports.updateAdminStatus = asyncHandler(async (req, res, next) => {
 
    res.send({ success: true });
 })
+
+exports.disableAdmin = asyncHandler(async (req, res, next) => {
+   const adminId = req.params.adminId;
+
+   try {
+      const admin = await Admin.findById(adminId);
+
+      if (!admin) {
+         return res.status(404).json({ message: 'Admin not found' });
+      }
+
+      admin.isDisabled = true;
+      await admin.save();
+
+      return res.status(200).json({ message: 'Admin has been disabled successfully.' });
+   } 
+   catch (error) {
+      console.error('Error disabling admin:', error);
+      return res.status(500).json({ message: 'Something went wrong.' });
+   }
+});
+
+exports.enableAdmin = asyncHandler(async (req, res, next) => {
+   const adminId = req.params.adminId;
+
+   try {
+      const admin = await Admin.findById(adminId);
+
+      if (!admin) {
+         return res.status(404).json({ message: 'Admin not found' });
+      }
+
+      admin.isDisabled = false;
+      await admin.save();
+
+      return res.status(200).json({ message: 'Admin has been enabled successfully.' });
+   } 
+   catch (error) {
+      console.error('Error disabling admin:', error);
+      return res.status(500).json({ message: 'Something went wrong.' });
+   }
+});
