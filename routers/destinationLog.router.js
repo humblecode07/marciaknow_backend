@@ -6,15 +6,16 @@ const {
    getMostFrequentDestinations,
    getDailySearchActivity,
 } = require('../controllers/destinationLog.controller');
+const { authenticateToken, verifyNotDisabled } = require('../middleware/auth')
 
 // Get most frequent destinations
-router.get('/recent-destinations', getRecentDestinationSearch);
-router.get('/frequent-destinations', getMostFrequentDestinations);
+router.get('/recent-destinations', authenticateToken, verifyNotDisabled, getRecentDestinationSearch);
+router.get('/frequent-destinations', authenticateToken, verifyNotDisabled, getMostFrequentDestinations);
 
-router.get('/daily-search-activity', getDailySearchActivity);
+router.get('/daily-search-activity', authenticateToken, verifyNotDisabled, getDailySearchActivity);
 
 // Log destination search/selection
-router.post('/', logDestinationSearch);
+router.post('/', authenticateToken, verifyNotDisabled, logDestinationSearch);
 
 
 

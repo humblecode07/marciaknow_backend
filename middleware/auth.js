@@ -35,7 +35,7 @@ const authenticateToken = asyncHandler(async (req, res, next) => {
         let errorMessage = 'Not authorized, token failed';
         if (error.name === 'JsonWebTokenError') {
             errorMessage = 'Invalid token format';
-        } 
+        }
         else if (error.name === 'TokenExpiredError') {
             errorMessage = 'Token has expired';
         }
@@ -46,4 +46,13 @@ const authenticateToken = asyncHandler(async (req, res, next) => {
     }
 });
 
-module.exports = { authenticateToken };
+const verifyNotDisabled = async (req, res, next) => {
+    const admin = await Admin.findById(req.user._id); // <- use _id here
+    if (admin?.isDisabled) {
+        return res.status(403).json({ message: 'Your account has been disabled.' });
+    }
+    next();
+};
+
+
+module.exports = { authenticateToken, verifyNotDisabled };

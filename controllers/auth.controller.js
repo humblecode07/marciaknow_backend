@@ -17,6 +17,10 @@ exports.log_in = asyncHandler(async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
    }
 
+   if (foundAdmin.isDisabled) {
+      return res.status(403).json({ message: 'Your account has been disabled. Contact a Super Admin.' });
+   }
+
    const match = await bcrypt.compare(password, foundAdmin.password);
    if (!match) {
       return res.status(401).json({ message: 'Invalid email or password.' });

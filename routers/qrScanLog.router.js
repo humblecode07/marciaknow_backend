@@ -8,6 +8,7 @@ const {
    getRecentScanLogs,
    getBuildingKioskStats
 } = require('../controllers/qrReports.controller');
+const { authenticateToken, verifyNotDisabled } = require('../middleware/auth');
 
 // Middleware for parameter validation
 const validateScanParams = (req, res, next) => {
@@ -60,25 +61,25 @@ const validateDateRange = (req, res, next) => {
 // Routes
 
 // POST /api/scan/:buildingId/:kioskId - Log QR scan when user lands on ScanGuide
-router.post('/:buildingId/:kioskId', validateScanParams, logQrScan);
+router.post('/:buildingId/:kioskId', validateScanParams, authenticateToken, verifyNotDisabled, logQrScan);
 
 // GET /api/scan/reports/daily - Get daily scan report
 // Query params: startDate, endDate, kioskId, buildingId
-router.get('/reports/daily', validateDateRange, getDailyScanReport);
+router.get('/reports/daily', validateDateRange, authenticateToken, verifyNotDisabled, getDailyScanReport);
 
 // GET /api/scan/reports/total - Get total scan count
 // Query params: kioskId, buildingId
-router.get('/reports/total', getTotalScanCount);
+router.get('/reports/total', authenticateToken, verifyNotDisabled, getTotalScanCount);
 
 // GET /api/scan/logs/recent - Get recent scan logs
 // Query params: page, limit, kioskId, buildingId
-router.get('/logs/recent', getRecentScanLogs);
+router.get('/logs/recent', authenticateToken, verifyNotDisabled, getRecentScanLogs);
 
 // GET /api/scan/stats/buildings - Get statistics by building and kiosk
-router.get('/stats/buildings', getBuildingKioskStats);
+router.get('/stats/buildings', authenticateToken, verifyNotDisabled, getBuildingKioskStats);
 
 // Health check endpoint
-router.get('/health', (req, res) => {
+router.get('/health', authenticateToken, verifyNotDisabled, (req, res) => {
    res.status(200).json({
       success: true,
       message: 'Scan logging service is running',

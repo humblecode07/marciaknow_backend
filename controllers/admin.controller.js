@@ -91,7 +91,8 @@ exports.register = asyncHandler(async (req, res, next) => {
    if (!req.file) {
       console.log('❌ No file received in req.file');
       console.log('Available fields in req:', Object.keys(req));
-   } else {
+   }
+   else {
       console.log('✅ File received:', {
          fieldname: req.file.fieldname,
          originalname: req.file.originalname,
@@ -425,7 +426,7 @@ exports.disableAdmin = asyncHandler(async (req, res, next) => {
       await admin.save();
 
       return res.status(200).json({ message: 'Admin has been disabled successfully.' });
-   } 
+   }
    catch (error) {
       console.error('Error disabling admin:', error);
       return res.status(500).json({ message: 'Something went wrong.' });
@@ -446,9 +447,66 @@ exports.enableAdmin = asyncHandler(async (req, res, next) => {
       await admin.save();
 
       return res.status(200).json({ message: 'Admin has been enabled successfully.' });
-   } 
+   }
    catch (error) {
       console.error('Error disabling admin:', error);
+      return res.status(500).json({ message: 'Something went wrong.' });
+   }
+});
+
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+   const { adminId } = req.params;
+
+   if (!mongoose.Types.ObjectId.isValid(adminId)) {
+      return res.status(400).json({ message: 'Invalid admin ID.' });
+   }
+
+   try {
+      const admin = await Admin.findById(adminId);
+
+      if (!admin) {
+         return res.status(404).json({ message: 'Admin not found.' });
+      }
+
+      const defaultPassword = "password";
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+
+      admin.password = hashedPassword;
+      await admin.save();
+
+      return res.status(200).json({ message: 'Password has been reset to default.' });
+   }
+   catch (error) {
+      console.error('Error resetting password:', error);
+      return res.status(500).json({ message: 'Something went wrong.' });
+   }
+});
+
+exports.adminDelete = asyncHandler(async (req, res, next) => {
+   const { adminId } = req.params;
+
+   if (!mongoose.Types.ObjectId.isValid(adminId)) {
+      return res.status(400).json({ message: 'Invalid admin ID.' });
+   }
+
+   try {
+      const admin = await Admin.findById(adminId);
+
+      if (!admin) {
+         return res.status(404).json({ message: 'Admin not found.' });
+      }
+
+      if (admin.roles.includes(Number(process.env.ROLE_SUPER_ADMIN))) {
+         return res.status(403).json({ message: 'Super Admin cannot be deleted.' });
+      }
+
+      await Admin.findByIdAndDelete(adminId);
+
+      return res.status(200).json({ message: 'Admin has been successfully deleted.' });
+   }
+   catch (error) {
+      console.error('Error deleting admin:', error);
       return res.status(500).json({ message: 'Something went wrong.' });
    }
 });

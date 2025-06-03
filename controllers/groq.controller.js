@@ -22,7 +22,7 @@ exports.ask = asyncHandler(async (req, res) => {
             'Content-Type': 'application/json'
          },
          body: JSON.stringify({
-            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            model: 'llama3-8b-8192',
             messages: [
                { role: 'system', content: 'You are a helpful assistant using campus data to answer questions.' },
                { role: 'user', content: fullPrompt }
