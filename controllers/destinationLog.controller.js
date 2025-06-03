@@ -1,6 +1,17 @@
 const DestinationLog = require('../models/destinationLog.model');
 const Building = require('../models/building.model');
-// Note: Room is embedded in Building, so we don't need a separate Room model import
+const { default: mongoose } = require('mongoose');
+
+const getRecentDestinationSearch = async (req, res) => {
+   try {
+      const recentDestinationsLogs = await DestinationLog.find().sort({ createdAt: -1 }).limit(10);
+
+      res.json(recentDestinationsLogs);
+   }
+   catch (error) {
+      throw new Error('Unexpected error precedented: ' + error.message);
+   }
+}
 
 const logDestinationSearch = async (req, res) => {
    try {
@@ -37,7 +48,6 @@ const getMostFrequentDestinations = async (req, res) => {
    try {
       const { timeframe = 'month' } = req.query;
 
-      // Calculate date range based on timeframe
       const now = new Date();
       let startDate;
 
@@ -55,7 +65,6 @@ const getMostFrequentDestinations = async (req, res) => {
             startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
 
-      // Aggregate frequent destinations
       const frequentDestinations = await DestinationLog.aggregate([
          {
             $match: {
@@ -67,11 +76,12 @@ const getMostFrequentDestinations = async (req, res) => {
                _id: {
                   buildingId: '$buildingId',
                   roomId: '$roomId',
-                  destinationType: '$destinationType'
+                  destinationType: '$destinationType',
                },
                count: { $sum: 1 },
                lastAccessed: { $max: '$timestamp' },
-               searchQueries: { $addToSet: '$searchQuery' }
+               searchQueries: { $addToSet: '$searchQuery' },
+               kioskId: { $first: '$kioskId' }
             }
          },
          {
@@ -82,27 +92,50 @@ const getMostFrequentDestinations = async (req, res) => {
          }
       ]);
 
-      // Populate with building/room details based on your schema structure
       const populatedResults = await Promise.all(
          frequentDestinations.map(async (dest) => {
             let buildingName = 'Unknown Building';
             let roomName = null;
 
+            console.log('dest', dest);
+
             try {
                // Find building by the auto-incremented 'id' field, not '_id'
-               const building = await Building.findOne({ id: dest._id.buildingId });
+               let building;
+               const buildingId = dest._id.buildingId; // FIX: Use dest._id.buildingId
+
+               if (mongoose.Types.ObjectId.isValid(buildingId) && buildingId.length === 24) {
+                  // It's an ObjectId, query by _id
+                  building = await Building.findById(buildingId);
+               } else {
+                  // It's a numeric ID, query by id field
+                  building = await Building.findOne({ id: parseInt(buildingId) });
+               }
 
                if (building) {
                   buildingName = building.name;
 
-                  // If there's a roomId, find the room within the building's existingRoom Map
                   if (dest._id.roomId) {
-                     // Search through all floors in existingRoom Map
-                     for (const [floor, rooms] of building.existingRoom) {
-                        const room = rooms.find(r => r._id.toString() === dest._id.roomId);
-                        if (room) {
-                           roomName = room.name;
-                           break;
+                     // Handle room lookup - also need to check if roomId is ObjectId or numeric
+                     const roomId = dest._id.roomId;
+
+                     if (mongoose.Types.ObjectId.isValid(roomId) && roomId.length === 24) {
+                        // ObjectId room - search through existingRoom Map
+                        for (const [floor, rooms] of building.existingRoom) {
+                           const room = rooms.find(r => r._id.toString() === roomId);
+                           if (room) {
+                              roomName = room.name;
+                              break;
+                           }
+                        }
+                     } else {
+                        // Numeric room ID - search by id field
+                        for (const [floor, rooms] of building.existingRoom) {
+                           const room = rooms.find(r => r.id === parseInt(roomId));
+                           if (room) {
+                              roomName = room.name;
+                              break;
+                           }
                         }
                      }
                   }
@@ -120,6 +153,8 @@ const getMostFrequentDestinations = async (req, res) => {
                count: dest.count,
                lastAccessed: dest.lastAccessed,
                searchQueries: dest.searchQueries,
+               timestamp: dest.timestamp,
+               kioskId: dest.kioskId
             };
          })
       );
@@ -147,7 +182,72 @@ const getMostFrequentDestinations = async (req, res) => {
    }
 };
 
+const getDailySearchActivity = async (req, res) => {
+   try {
+      const { timeframe = 'week' } = req.query;
+
+      const now = new Date();
+      let startDate;
+
+      switch (timeframe) {
+         case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+         case 'month':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+         case 'year':
+            startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+            break;
+         default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      }
+
+      const dailySearches = await DestinationLog.aggregate([
+         {
+            $match: {
+               timestamp: { $gte: startDate }
+            }
+         },
+         {
+            $group: {
+               _id: {
+                  $dateToString: {
+                     format: "%Y-%m-%d",
+                     date: "$timestamp"
+                  }
+               },
+               searches: { $sum: 1 },
+               date: { $first: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } } }
+            }
+         },
+         {
+            $sort: { "_id": 1 }
+         }
+      ]);
+
+      res.json({
+         success: true,
+         timeframe,
+         data: dailySearches.map(day => ({
+            date: day._id,
+            searches: day.searches
+         }))
+      });
+
+   } catch (error) {
+      console.error('Error fetching daily search activity:', error);
+      res.status(500).json({
+         success: false,
+         message: 'Failed to fetch daily search activity',
+         error: error.message,
+      });
+   }
+};
+
 module.exports = {
    logDestinationSearch,
    getMostFrequentDestinations,
+   getDailySearchActivity,
+   getRecentDestinationSearch
 };

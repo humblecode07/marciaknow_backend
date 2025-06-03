@@ -20,7 +20,6 @@ const validateScanParams = (req, res, next) => {
       });
    }
 
-   // Basic ObjectId validation for buildingId
    if (!/^[0-9a-fA-F]{24}$/.test(buildingId)) {
       return res.status(400).json({
          success: false,
@@ -31,7 +30,6 @@ const validateScanParams = (req, res, next) => {
    next();
 };
 
-// Middleware for date validation
 const validateDateRange = (req, res, next) => {
    const { startDate, endDate } = req.query;
 

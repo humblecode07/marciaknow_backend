@@ -2,6 +2,7 @@ const express = require('express');
 const room_controller = require('../controllers/room.controller');
 const upload = require('../middleware/imageUpload');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 
 /* GET */
 router.get('/', room_controller.get_all_rooms); 
@@ -9,12 +10,12 @@ router.get('/:kioskID', room_controller.get_rooms_for_kiosk);
 router.get('/:buildingID/:roomID', room_controller.get_room_from_building); 
 
 /* POST */
-router.post('/:buildingID/:kioskID', upload.array('images[]'), room_controller.add_room);
+router.post('/:buildingID/:kioskID', upload.array('images[]'), authenticateToken, room_controller.add_room);
 
 /* PATCH */
-router.patch('/:buildingID/:kioskID/:roomID', upload.array('images[]'), room_controller.edit_room);
+router.patch('/:buildingID/:kioskID/:roomID', upload.array('images[]'), authenticateToken, room_controller.edit_room);
 
 /* DELETE */
-router.delete('/:buildingID/:kioskID/:roomID', room_controller.delete_room);
+router.delete('/:buildingID/:kioskID/:roomID', authenticateToken, room_controller.delete_room);
 
 module.exports = router;

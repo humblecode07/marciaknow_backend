@@ -26,10 +26,22 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 connectDB();
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://marcia-know.vercel.app'
+];
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(cookieParser());

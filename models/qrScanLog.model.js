@@ -41,12 +41,10 @@ const qrScanLogSchema = new mongoose.Schema({
    timestamps: true
 });
 
-// Index for better query performance
 qrScanLogSchema.index({ scannedAt: -1 });
 qrScanLogSchema.index({ kioskId: 1, scannedAt: -1 });
 qrScanLogSchema.index({ buildingId: 1, scannedAt: -1 });
 
-// Static method to get daily scan counts
 qrScanLogSchema.statics.getDailyScanCounts = function (startDate, endDate, filters = {}) {
    const matchStage = {
       scannedAt: {
@@ -63,32 +61,37 @@ qrScanLogSchema.statics.getDailyScanCounts = function (startDate, endDate, filte
       matchStage.buildingId = new mongoose.Types.ObjectId(filters.buildingId);
    }
 
+   console.log('Match stage:', JSON.stringify(matchStage, null, 2));
+
    return this.aggregate([
       { $match: matchStage },
       {
          $group: {
             _id: {
-               year: { $year: '$scannedAt' },
-               month: { $month: '$scannedAt' },
-               day: { $dayOfMonth: '$scannedAt' }
+               // Use $dateToString with UTC to ensure consistency
+               date: {
+                  $dateToString: {
+                     format: '%Y-%m-%d',
+                     date: '$scannedAt',
+                     timezone: 'UTC'
+                  }
+               }
             },
             totalScans: { $sum: 1 },
-            date: { $first: '$scannedAt' }
+            firstScan: { $min: '$scannedAt' },
+            lastScan: { $max: '$scannedAt' }
          }
       },
       {
          $project: {
             _id: 0,
-            reportDate: {
-               $dateToString: {
-                  format: '%Y-%m-%d',
-                  date: '$date'
-               }
-            },
-            totalScans: 1
+            reportDate: '$_id.date',
+            totalScans: 1,
+            firstScan: 1,
+            lastScan: 1
          }
       },
-      { $sort: { reportDate: -1 } }
+      { $sort: { reportDate: 1 } }
    ]);
 };
 

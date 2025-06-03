@@ -63,11 +63,31 @@ const logKioskActivity = async (adminId, kioskData, action, changes = null) => {
 
 const logRoomActivity = async (adminId, action, roomData) => {
    try {
+      // Create a more descriptive log entry
+      let description;
+
+      if (action === "Updated" && roomData.changes) {
+         // Use the detailed changes summary from the controller
+         description = `${action} room "${roomData.roomName || 'unnamed'}" - ${roomData.changes}`;
+      } else if (action === "Created") {
+         description = `${action} room "${roomData.roomName || 'unnamed'}" on floor ${roomData.floor}`;
+      } else if (action === "Deleted") {
+         description = `${action} room "${roomData.roomName || 'unnamed'}"`;
+      } else {
+         // Fallback for other actions
+         description = `${action} room "${roomData.roomName || 'unnamed'}" on floor ${roomData.floor}`;
+      }
+
       const logEntry = {
-         description: `${action} room: ${roomData.roomName}`,
+         description,
+         roomId: roomData.roomId, // Include room ID for reference
+         roomName: roomData.roomName,
+         buildingId: roomData.buildingId,
          buildingName: roomData.buildingName,
          floor: roomData.floor,
          kioskName: roomData.kioskName,
+         action: action, // Store the action type separately for filtering
+         changes: roomData.changes || null, // Store raw changes for detailed tracking
          dateOfChange: new Date()
       };
 
@@ -81,7 +101,7 @@ const logRoomActivity = async (adminId, action, roomData) => {
          { new: true }
       );
 
-      console.log(`System log created: ${action} for room ${roomData.roomName}`);
+      console.log(`System log created: ${action} for room "${roomData.roomName || 'unnamed'}" - ${roomData.changes || 'basic info'}`);
    } catch (error) {
       console.error('Failed to log room activity:', error.message);
    }
@@ -89,10 +109,29 @@ const logRoomActivity = async (adminId, action, roomData) => {
 
 const logBuildingActivity = async (adminId, action, buildingData) => {
    try {
+      // Create a more descriptive log entry
+      let description;
+
+      if (action === "Updated" && buildingData.changes) {
+         // Use the detailed changes summary from the controller
+         description = `${action} building "${buildingData.name || 'unnamed'}" - ${buildingData.changes}`;
+      } else if (action === "Created") {
+         description = `${action} building "${buildingData.name || 'unnamed'}" with ${buildingData.floor} floors`;
+      } else if (action === "Deleted") {
+         description = `${action} building "${buildingData.name || 'unnamed'}"`;
+      } else {
+         // Fallback for other actions
+         description = `${action} building "${buildingData.name || 'unnamed'}" with ${buildingData.floor} floors`;
+      }
+
       const logEntry = {
-         description: `${action} building floor ${buildingData.floor}`,
+         description,
+         buildingId: buildingData.buildingId, // Include building ID for reference
+         buildingName: buildingData.name,
          floor: buildingData.floor,
          kioskName: buildingData.kioskName,
+         action: action, // Store the action type separately for filtering
+         changes: buildingData.changes || null, // Store raw changes for detailed tracking
          dateOfChange: new Date()
       };
 
@@ -106,7 +145,7 @@ const logBuildingActivity = async (adminId, action, buildingData) => {
          { new: true }
       );
 
-      console.log(`System log created: ${action} for building floor ${buildingData.floor}`);
+      console.log(`System log created: ${action} for building "${buildingData.name || 'unnamed'}" - ${buildingData.changes || 'basic info'}`);
    } catch (error) {
       console.error('Failed to log building activity:', error.message);
    }

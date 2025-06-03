@@ -28,21 +28,27 @@ const adminSchema = new mongoose.Schema({
          dateOfChange: { type: Date }
       },
       mapEditor: {
-         room: {
+         room: [{
             description: { type: String },
             buildingName: { type: String },
             floor: { type: Number },
             kioskName: { type: String },
             dateOfChange: { type: Date }
-         },
-         building: {
+         }],
+         building: [{
             description: { type: String },
             floor: { type: Number },
             kioskName: { type: String },
+            buildingId: { type: String }, // Added for better tracking
+            buildingName: { type: String }, // Added for better tracking
             dateOfChange: { type: Date }
-         }
+         }]
       }
    }
 });
+
+adminSchema.index({ 'systemLogs.mapEditor.building.dateOfChange': -1 });
+adminSchema.index({ 'systemLogs.mapEditor.room.dateOfChange': -1 });
+adminSchema.index({ 'systemLogs.kiosk.dateOfChange': -1 });
 
 module.exports = mongoose.model("Admins", adminSchema)

@@ -46,48 +46,124 @@ const logQrScan = async (req, res) => {
   }
 };
 
-// Get daily scan report
 const getDailyScanReport = async (req, res) => {
   try {
     const { startDate, endDate, kioskId, buildingId } = req.query;
 
-    // Default to last 30 days if no dates provided
-    const end = endDate ? new Date(endDate) : new Date();
-    const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    let end, start;
+    
+    if (endDate) {
+      end = new Date(endDate);
+    } else {
+      end = new Date(); // Today
+    }
+    
+    if (startDate) {
+      start = new Date(startDate);
+    } else {
+      start = new Date();
+      start.setDate(start.getDate() - 30); 
+    }
 
-    // Set end date to end of day
-    end.setHours(23, 59, 59, 999);
-    start.setHours(0, 0, 0, 0);
+    // IMPORTANT: Set time boundaries for database query
+    const dbStart = new Date(start);
+    const dbEnd = new Date(end);
+    dbStart.setHours(0, 0, 0, 0);
+    dbEnd.setHours(23, 59, 59, 999);
 
     const filters = {};
     if (kioskId) filters.kioskId = kioskId;
     if (buildingId) filters.buildingId = buildingId;
 
-    const dailyCounts = await QrScanLog.getDailyScanCounts(start, end, filters);
+    console.log('Original dates:', { start: start.toISOString(), end: end.toISOString() });
+    console.log('DB query dates:', { dbStart: dbStart.toISOString(), dbEnd: dbEnd.toISOString() });
+    console.log('Filters:', filters);
 
-    // Fill in missing dates with 0 counts
-    const filledData = [];
-    const currentDate = new Date(start);
+    const dailyCounts = await QrScanLog.getDailyScanCounts(dbStart, dbEnd, filters);
     
-    while (currentDate <= end) {
-      const dateString = currentDate.toISOString().split('T')[0];
-      const existingData = dailyCounts.find(item => item.reportDate === dateString);
+    console.log('Daily counts from DB:', dailyCounts);
+
+    // Create a map for faster lookup
+    const countMap = new Map();
+    dailyCounts.forEach(item => {
+      countMap.set(item.reportDate, item.totalScans);
+      console.log('Added to map:', item.reportDate, '->', item.totalScans);
+    });
+
+    const filledData = [];
+    
+    // Use separate date object for iteration to avoid mutation issues
+    const iterDate = new Date(start);
+    iterDate.setHours(0, 0, 0, 0); // Normalize time
+    
+    const endDate_normalized = new Date(end);
+    endDate_normalized.setHours(0, 0, 0, 0); // Normalize time
+    
+    console.log('Iteration range:', { 
+      iterStart: iterDate.toISOString(), 
+      iterEnd: endDate_normalized.toISOString() 
+    });
+    
+    // Generate all dates from start to end (inclusive)
+    while (iterDate <= endDate_normalized) {
+      const dateString = iterDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const count = countMap.get(dateString) || 0;
+      
+      console.log('Processing date:', dateString, 'Count:', count);
       
       filledData.push({
         reportDate: dateString,
-        totalScans: existingData ? existingData.totalScans : 0
+        totalScans: count
       });
       
-      currentDate.setDate(currentDate.getDate() + 1);
+      // Move to next day
+      iterDate.setDate(iterDate.getDate() + 1);
     }
+
+    // Calculate summary statistics
+    const totalScans = filledData.reduce((sum, day) => sum + day.totalScans, 0);
+    const averagePerDay = filledData.length > 0 ? totalScans / filledData.length : 0;
+    
+    // Get last 7 days vs previous 7 days for trend calculation
+    const reversedData = [...filledData].reverse(); // Most recent first
+    const last7Days = reversedData.slice(0, Math.min(7, reversedData.length));
+    const previous7Days = reversedData.slice(7, Math.min(14, reversedData.length));
+    
+    const last7DaysTotal = last7Days.reduce((sum, day) => sum + day.totalScans, 0);
+    const previous7DaysTotal = previous7Days.reduce((sum, day) => sum + day.totalScans, 0);
+    
+    let percentageChange = 0;
+    if (previous7DaysTotal > 0) {
+      percentageChange = ((last7DaysTotal - previous7DaysTotal) / previous7DaysTotal) * 100;
+    } else if (last7DaysTotal > 0) {
+      percentageChange = 100; // 100% increase from 0
+    }
+
+    console.log('Final summary:', {
+      totalDays: filledData.length,
+      totalScans,
+      last7DaysTotal,
+      previous7DaysTotal,
+      percentageChange
+    });
 
     res.status(200).json({
       success: true,
-      data: filledData.reverse(), // Most recent first
+      data: reversedData, // Most recent first
       summary: {
         totalDays: filledData.length,
-        totalScans: filledData.reduce((sum, day) => sum + day.totalScans, 0),
-        averagePerDay: Math.round(filledData.reduce((sum, day) => sum + day.totalScans, 0) / filledData.length * 100) / 100,
+        totalScans: totalScans,
+        averagePerDay: Math.round(averagePerDay * 100) / 100,
+        weeklyTrend: {
+          last7Days: last7DaysTotal,
+          previous7Days: previous7DaysTotal,
+          percentageChange: Math.round(percentageChange * 100) / 100,
+          trend: percentageChange > 0 ? 'increasing' : percentageChange < 0 ? 'decreasing' : 'stable'
+        },
+        dateRange: {
+          start: start.toISOString().split('T')[0],
+          end: end.toISOString().split('T')[0]
+        },
         filters: filters
       }
     });
@@ -100,6 +176,34 @@ const getDailyScanReport = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
+};
+
+// Quick test function - add this temporarily to debug
+const testDateLogic = () => {
+  const end = new Date(); // Today (June 1, 2025)
+  const start = new Date();
+  start.setDate(start.getDate() - 7); // 7 days ago
+  
+  console.log('Test dates:');
+  console.log('Start:', start.toISOString());
+  console.log('End:', end.toISOString());
+  
+  const iterDate = new Date(start);
+  const endNormalized = new Date(end);
+  iterDate.setHours(0, 0, 0, 0);
+  endNormalized.setHours(0, 0, 0, 0);
+  
+  console.log('Normalized:');
+  console.log('Start:', iterDate.toISOString());
+  console.log('End:', endNormalized.toISOString());
+  
+  const dates = [];
+  while (iterDate <= endNormalized) {
+    dates.push(iterDate.toISOString().split('T')[0]);
+    iterDate.setDate(iterDate.getDate() + 1);
+  }
+  
+  console.log('Generated dates:', dates);
 };
 
 // Get total scan count
