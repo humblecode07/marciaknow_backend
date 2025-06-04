@@ -16,6 +16,6 @@ router.post('/:buildingID/:kioskID', upload.array('images[]'), authenticateToken
 router.patch('/:buildingID/:kioskID/:roomID', upload.array('images[]'), authenticateToken, verifyNotDisabled, room_controller.edit_room);
 
 /* DELETE */
-router.delete('/:buildingID/:kioskID/:roomID', authenticateToken, verifyNotDisabled, room_controller.delete_room);
+router.delete('/:buildingID/:roomID', authenticateToken, verifyNotDisabled, room_controller.delete_room);
 
 module.exports = router;

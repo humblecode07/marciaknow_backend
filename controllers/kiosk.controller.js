@@ -65,7 +65,12 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
          }
 
          building.existingRoom.set(newKiosk.kioskID, inheritedRooms);
-         building.navigationPath.set(newKiosk.kioskID, {});
+         building.navigationPath.set(newKiosk.kioskID, {
+            [newKiosk.kioskID]: {
+               x: newKiosk.coordinates.x,
+               y: newKiosk.coordinates.y
+            }
+         });
          building.navigationGuide.set(newKiosk.kioskID, {});
 
          await building.save();

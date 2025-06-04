@@ -5,7 +5,7 @@ const connectDB = require("./config/dbConn");
 const createError = require('http-errors');
 const cors = require("cors");
 const cookieParser = require('cookie-parser');
-require('./services/kiosk.monitor');
+// require('./services/kiosk.monitor');
 
 // Routers
 const buildingRouter = require("./routers/building.router");
