@@ -20,6 +20,7 @@ const refreshTokenRouter = require('./routers/refreshToken.router');
 const logoutRouter = require('./routers/logout.router');
 const qrScanLogRouter = require('./routers/qrScanLog.router');
 const destinationLogRoutes = require('./routers/destinationLog.router');
+const chatbotRoutes = require('./routers/chatbot.router');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/refresh", refreshTokenRouter);
 app.use("/logout", logoutRouter);
 app.use("/qrscan", qrScanLogRouter);
 app.use("/destinationlog", destinationLogRoutes);
+app.use('/chatbot', chatbotRoutes);
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {

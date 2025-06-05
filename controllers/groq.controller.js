@@ -10,7 +10,7 @@ exports.ask = asyncHandler(async (req, res) => {
       // Fetch all buildings from DB
       const buildings = await Building.find();
 
-      // Build the prompt with instructions to output JSON with detected_location
+      // Build the prompt with instructions to output JSON with detected_location, navigationGuide, and navigationPath
       const basePrompt = await buildPrompt(buildings, kioskID);
       const fullPrompt = `${basePrompt}\n\nUser asks: ${question}\n\n` +
          `Please respond ONLY in the following JSON format:\n` +
@@ -21,15 +21,27 @@ exports.ask = asyncHandler(async (req, res) => {
          `    "type": "[building/room/null]",\n` +
          `    "confidence": "[high/medium/low]",\n` +
          `    "action": "[navigate/search/info/null]"\n` +
-         `  }\n` +
+         `  },\n` +
+         `  "navigationGuide": "[Step-by-step text directions if navigation requested, otherwise null]",\n` +
+         `  "navigationPath": [\n` +
+         `    {\n` +
+         `      "step": 1,\n` +
+         `      "instruction": "[Brief instruction]",\n` +
+         `      "direction": "[north/south/east/west/straight/left/right]",\n` +
+         `      "distance": "[estimated distance if available]",\n` +
+         `      "landmark": "[notable landmark or reference point]"\n` +
+         `    }\n` +
+         `  ]\n` +
          `}\n\n` +
          `IMPORTANT RULES:\n` +
-         `1. If user asks about directions, navigation, or "where is", set action to "navigate"\n` +
-         `2. If user asks general questions about a location, set action to "info"\n` +
-         `3. If user mentions a location but asks something else, set action to "search"\n` +
+         `1. If user asks about directions, navigation, or "where is", set action to "navigate" and provide both navigationGuide and navigationPath\n` +
+         `2. If user asks general questions about a location, set action to "info" and set navigation fields to null\n` +
+         `3. If user mentions a location but asks something else, set action to "search" and set navigation fields to null\n` +
          `4. Match location names EXACTLY as they appear in the database\n` +
          `5. Set confidence based on how certain you are about the location match\n` +
-         `6. For ambiguous queries, ask for clarification and set all values to null`;
+         `6. For navigation requests, provide detailed step-by-step directions in navigationGuide and structured path in navigationPath\n` +
+         `7. navigationPath should be an array of step objects with step number, instruction, direction, distance, and landmark\n` +
+         `8. For ambiguous queries, ask for clarification and set all values to null`;
 
       // Call Groq API
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -43,7 +55,7 @@ exports.ask = asyncHandler(async (req, res) => {
             messages: [
                {
                   role: 'system',
-                  content: 'You are a helpful campus navigation assistant. Always respond in the exact JSON format requested. Be precise with location names and actions.'
+                  content: 'You are a helpful campus navigation assistant. Always respond in the exact JSON format requested. Be precise with location names and actions. When providing navigation, give detailed step-by-step directions.'
                },
                { role: 'user', content: fullPrompt }
             ]
@@ -61,7 +73,9 @@ exports.ask = asyncHandler(async (req, res) => {
             type: null,
             confidence: null,
             action: null
-         }
+         },
+         navigationGuide: null,
+         navigationPath: null
       };
 
       try {
@@ -77,15 +91,32 @@ exports.ask = asyncHandler(async (req, res) => {
                action: parsed.detected_location.action || null
             };
          }
+
+         // Ensure navigation fields exist
+         parsed.navigationGuide = parsed.navigationGuide || null;
+         parsed.navigationPath = parsed.navigationPath || null;
+
+         // Validate navigationPath structure if it exists
+         if (parsed.navigationPath && Array.isArray(parsed.navigationPath)) {
+            parsed.navigationPath = parsed.navigationPath.map(step => ({
+               step: step.step || null,
+               instruction: step.instruction || null,
+               direction: step.direction || null,
+               distance: step.distance || null,
+               landmark: step.landmark || null
+            }));
+         }
+
       } catch (e) {
          console.warn('Failed to parse AI JSON response, falling back to raw answer.');
          parsed.answer = rawAnswer; // fallback plain text
       }
 
-      // Send the structured answer and detected location back to frontend
       res.json({
          answer: parsed.answer,
-         detected_location: parsed.detected_location
+         detected_location: parsed.detected_location,
+         navigationGuide: parsed.navigationGuide,
+         navigationPath: parsed.navigationPath
       });
 
    } catch (error) {
@@ -97,7 +128,9 @@ exports.ask = asyncHandler(async (req, res) => {
             type: null,
             confidence: null,
             action: null
-         }
+         },
+         navigationGuide: null,
+         navigationPath: null
       });
    }
 });
