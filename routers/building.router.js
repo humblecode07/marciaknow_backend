@@ -5,9 +5,9 @@ const router = express.Router();
 const { authenticateToken, verifyNotDisabled } = require('../middleware/auth');
 
 /* GET */
-router.get('/', authenticateToken, verifyNotDisabled, building_controller.get_buildings);
-router.get('/:buildingID', authenticateToken, verifyNotDisabled, building_controller.get_building);
-router.get('/get/:kioskID', authenticateToken, verifyNotDisabled, building_controller.get_buildings_based_from_kiosk);
+router.get('/', building_controller.get_buildings);
+router.get('/:buildingID',  building_controller.get_building);
+router.get('/get/:kioskID', building_controller.get_buildings_based_from_kiosk);
 
 /* POST */
 router.post('/', authenticateToken, verifyNotDisabled, building_controller.add_building);
