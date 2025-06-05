@@ -36,10 +36,16 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 const corsOptions = {
-    origin: 'https://marciaknow-backend.vercel.app/',
-    credentials: true,            //access-control-allow-credentials:true
+    origin: (origin, callback) => {
+        if (allowedOrigins.indexOf(origin) !== -1 || !origin) { // !origin allows requests from same origin (e.g., Postman, curl, or if you deploy frontend and backend on the same base domain)
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
     optionSuccessStatus: 200
-}
+};
 
 app.use(cors(corsOptions));
 app.use(cookieParser());
