@@ -4,7 +4,7 @@ const router = express.Router();
 const { authenticateToken, verifyNotDisabled } = require('../middleware/auth');
 
 /* GET */
-router.get('/', authenticateToken, verifyNotDisabled, kiosk_controller.get_kiosks);
+router.get('/', kiosk_controller.get_kiosks);
 router.get('/:kioskID', authenticateToken, verifyNotDisabled, kiosk_controller.get_kiosk);
 
 /* POST */
