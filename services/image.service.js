@@ -27,13 +27,29 @@ exports.process_images = asyncHandler(async (files) => {
       }
 
       const { width, height } = await sharp(file.buffer).metadata();
-      const minWidth = 1920;
-      const minHeight = 1080;
+
+      const minWidth = 1280;
+      const minHeight = 720;
       const maxWidth = 3840;
       const maxHeight = 2160;
 
-      if (width < minWidth || height < minHeight || width > maxWidth || height > maxHeight) {
-         throw new Error(`Image dimensions are out of range.`);
+      if (
+         width < minWidth || height < minHeight ||
+         width > maxWidth || height > maxHeight
+      ) {
+         throw new Error("Image dimensions are out of allowed range.");
+      }
+
+      // Allow approximate 16:9 aspect ratio within a 2% margin
+      const aspectRatio = width / height;
+      const targetRatio = 16 / 9;
+      const tolerance = 0.02; // 2% margin
+
+      if (
+         aspectRatio < targetRatio * (1 - tolerance) ||
+         aspectRatio > targetRatio * (1 + tolerance)
+      ) {
+         throw new Error("Image must be approximately 16:9 aspect ratio.");
       }
 
       const fileExtension = file.originalname.split('.').pop();
@@ -50,13 +66,12 @@ exports.process_images = asyncHandler(async (files) => {
          uploadStream.on('finish', resolve);
       });
 
-      // Get the file ID from the uploadStream - this is the critical line you're missing
       const fileId = uploadStream.id;
 
       const imageData = {
-         _id: fileId,          // Add this line to include the actual GridFS file ID
+         _id: fileId,
          file_path: imageUUID,
-         aspect_ratio: width / height,
+         aspect_ratio: aspectRatio,
          height,
          width,
       };
@@ -68,24 +83,25 @@ exports.process_images = asyncHandler(async (files) => {
    return results;
 });
 
+
 exports.delete_images = async (imageIdsToDelete) => {
    if (!imageIdsToDelete || !Array.isArray(imageIdsToDelete) || imageIdsToDelete.length === 0) return;
 
    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db);
-   
+
    console.log(`Attempting to delete ${imageIdsToDelete.length} images from GridFS`);
-   
+
    // Find images by file name instead of ID
    for (const image of imageIdsToDelete) {
       try {
          // First, try to find the file by its file_path (filename)
          const files = await bucket.find({ filename: image.file_path }).toArray();
-         
+
          if (files.length === 0) {
             console.log(`No file found with filename: ${image.file_path}`);
             continue;
          }
-         
+
          // Delete each matching file
          for (const file of files) {
             await bucket.delete(file._id);
