@@ -5,7 +5,7 @@ const { authenticateToken, verifyNotDisabled } = require('../middleware/auth');
 
 /* GET */
 router.get('/', kiosk_controller.get_kiosks);
-router.get('/:kioskID', authenticateToken, verifyNotDisabled, kiosk_controller.get_kiosk);
+router.get('/:kioskID', kiosk_controller.get_kiosk);
 
 /* POST */
 router.post('/', authenticateToken, verifyNotDisabled, kiosk_controller.add_kiosk);
