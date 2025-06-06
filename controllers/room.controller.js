@@ -327,22 +327,22 @@ exports.edit_room = asyncHandler(async (req, res) => {
    }
 });
 
-exports.delete_room = asyncHandler(async (req, res) => {
+exports.delete_room_from_all_kiosks = asyncHandler(async (req, res) => {
    try {
-      const { buildingID, kioskID, roomID } = req.params;
+      const { buildingID } = req.params;
+      const { roomName, floor } = req.body; // Changed to use roomName and floor from request body
 
-      const room = await room_service.delete_room(buildingID, kioskID, roomID);
+      const result = await room_service.delete_room_from_all_kiosks(buildingID, roomName, floor);
 
-      return res.status(201).json({
+      return res.status(200).json({
          success: true,
-         message: "Room deleted successfully",
-         data: room
+         message: "Room deleted successfully from all kiosks",
+         data: result
       });
-   }
-   catch (error) {
+   } catch (error) {
       res.status(400).json({
          success: false,
          message: error.message
       });
    }
-})
+});

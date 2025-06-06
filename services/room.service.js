@@ -166,38 +166,82 @@ exports.edit_room = asyncHandler(async (buildingID, kioskID, roomID, files, room
    return rooms[roomIndex];
 });
 
-exports.delete_room = asyncHandler(async (buildingID, kioskID, roomID) => {
+exports.delete_room_from_all_kiosks = asyncHandler(async (buildingID, roomName, floor) => {
    try {
       const building = await Building.findById(buildingID);
       if (!building) throw new Error('Building not found');
 
-      console.log('building', building);
+      console.log(`Deleting room "${roomName}" on floor ${floor} from all kiosks in building ${buildingID}`);
 
-      const rooms = building.existingRoom?.get(kioskID);
-      if (!rooms) throw new Error('No rooms found for this kiosk');
+      let allImagesToDelete = [];
+      let deletedCount = 0;
+      let kiosksModified = [];
+      let deletedRoomIds = []; // Track all deleted room IDs for reference
 
-      const roomIndex = rooms.findIndex(room => room._id.toString() === roomID);
-      if (roomIndex === -1) throw new Error('Room not found');
+      // Iterate through all kiosks in the existingRoom Map
+      for (const [kioskID, rooms] of building.existingRoom.entries()) {
+         console.log(`Checking kiosk ${kioskID} with ${rooms.length} rooms`);
 
-      // Optional: get images for cleanup
-      const imagesToDelete = rooms[roomIndex].image || [];
+         // Find rooms with matching name and floor (going backwards to safely remove)
+         for (let i = rooms.length - 1; i >= 0; i--) {
+            const room = rooms[i];
 
-      // Remove the room
-      rooms.splice(roomIndex, 1);
+            // Match by name and floor instead of _id
+            if (room.name === roomName && room.floor === floor) {
+               console.log(`Found matching room "${roomName}" on floor ${floor} in kiosk ${kioskID} with ID: ${room._id}`);
 
-      // Update the building
-      building.markModified(`existingRoom.${kioskID}`);
-      await building.save();
+               // Collect images for cleanup
+               if (room.image && room.image.length > 0) {
+                  const imageIds = room.image.map(img => img._id.toString());
+                  allImagesToDelete.push(...imageIds);
+               }
 
-      // Delete images if needed
-      if (imagesToDelete.length > 0) {
-         const ids = imagesToDelete.map(img => img._id.toString());
-         await imageService.delete_images(ids);
+               // Store the room ID before deletion
+               deletedRoomIds.push(room._id.toString());
+
+               // Remove the room
+               rooms.splice(i, 1);
+               deletedCount++;
+
+               if (!kiosksModified.includes(kioskID)) {
+                  kiosksModified.push(kioskID);
+               }
+            }
+         }
       }
 
-      console.log(`Deleted room ${roomID} from kiosk ${kioskID} in building ${buildingID}`);
-   }
-   catch (error) {
-      console.error(`Failed to remove ${roomID} of ${buildingID} from ${kioskID}`, error.message);
+      if (deletedCount === 0) {
+         throw new Error(`Room "${roomName}" on floor ${floor} not found in any kiosk`);
+      }
+
+      // Mark all modified kiosks as changed
+      kiosksModified.forEach(kioskID => {
+         building.markModified(`existingRoom.${kioskID}`);
+      });
+
+      // Save the building
+      await building.save();
+
+      // Delete all collected images
+      if (allImagesToDelete.length > 0) {
+         await imageService.delete_images(allImagesToDelete);
+         console.log(`Deleted ${allImagesToDelete.length} images`);
+      }
+
+      console.log(`Successfully deleted room "${roomName}" on floor ${floor} from ${deletedCount} kiosk(s) in building ${buildingID}`);
+
+      return {
+         deletedFromKiosks: kiosksModified,
+         totalDeletedRooms: deletedCount,
+         deletedRoomIds: deletedRoomIds, // Return the actual IDs that were deleted
+         deletedImages: allImagesToDelete.length,
+         buildingId: buildingID,
+         roomName: roomName,
+         floor: floor
+      };
+
+   } catch (error) {
+      console.error(`Failed to delete room "${roomName}" on floor ${floor} from all kiosks in building ${buildingID}:`, error.message);
+      throw error;
    }
 });
