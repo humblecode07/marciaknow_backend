@@ -10,10 +10,11 @@ exports.ask = asyncHandler(async (req, res) => {
       // Fetch all buildings from DB
       const buildings = await Building.find();
 
-      // Build the prompt with instructions to output JSON with detected_location, navigationGuide, and navigationPath
+      // Build base prompt with location data and kiosk ID
       const basePrompt = await buildPrompt(buildings, kioskID);
       const fullPrompt = `${basePrompt}\n\nUser asks: ${question}\n\n` +
-         `Please respond ONLY in the following JSON format:\n` +
+         `You must respond with a SINGLE JSON object only, with NO surrounding text, no explanations, no notes, no markdown.\n\n` +
+         `Respond strictly in this JSON format:\n` +
          `{\n` +
          `  "answer": "[Your natural language response here]",\n` +
          `  "detected_location": {\n` +
@@ -27,23 +28,19 @@ exports.ask = asyncHandler(async (req, res) => {
          `    {\n` +
          `      "step": 1,\n` +
          `      "instruction": "[Brief instruction]",\n` +
-         `      "direction": "[north/south/east/west/straight/left/right]",\n` +
+         `      "direction": "[north/south/east/west/straight/left/right/up/down]",\n` +
          `      "distance": "[estimated distance if available]",\n` +
          `      "landmark": "[notable landmark or reference point]"\n` +
          `    }\n` +
          `  ]\n` +
          `}\n\n` +
          `IMPORTANT RULES:\n` +
-         `1. If user asks about directions, navigation, or "where is", set action to "navigate" and provide both navigationGuide and navigationPath\n` +
-         `2. If user asks general questions about a location, set action to "info" and set navigation fields to null\n` +
-         `3. If user mentions a location but asks something else, set action to "search" and set navigation fields to null\n` +
-         `4. Match location names EXACTLY as they appear in the database\n` +
-         `5. Set confidence based on how certain you are about the location match\n` +
-         `6. For navigation requests, provide detailed step-by-step directions in navigationGuide and structured path in navigationPath\n` +
-         `7. navigationPath should be an array of step objects with step number, instruction, direction, distance, and landmark\n` +
-         `8. For ambiguous queries, ask for clarification and set all values to null`;
+         `1. Respond ONLY with valid JSON. No intro, no explanation.\n` +
+         `2. If unsure of location, set all values to null and action to null.\n` +
+         `3. Match exact building/room names. Be concise and correct.\n` +
+         `4. Don't make up places. Don't hallucinate responses.\n`;
 
-      // Call Groq API
+      // GROQ API request
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
          method: 'POST',
          headers: {
@@ -55,7 +52,7 @@ exports.ask = asyncHandler(async (req, res) => {
             messages: [
                {
                   role: 'system',
-                  content: 'You are a helpful campus navigation assistant. Always respond in the exact JSON format requested. Be precise with location names and actions. When providing navigation, give detailed step-by-step directions.'
+                  content: 'You are a JSON-only campus assistant. You must NEVER include natural language outside the JSON block. Never say “Here is the response”. Only return a single JSON object per request.'
                },
                { role: 'user', content: fullPrompt }
             ]
@@ -63,9 +60,12 @@ exports.ask = asyncHandler(async (req, res) => {
       });
 
       const result = await response.json();
-      const rawAnswer = result.choices?.[0]?.message?.content || '{}';
+      let rawAnswer = result.choices?.[0]?.message?.content || '{}';
 
-      // Try to parse the JSON string from AI
+      // Strip surrounding junk if it returns explanation
+      const jsonMatch = rawAnswer.match(/{[\s\S]+}/);
+      if (jsonMatch) rawAnswer = jsonMatch[0];
+
       let parsed = {
          answer: "Sorry, no response generated.",
          detected_location: {
@@ -81,35 +81,31 @@ exports.ask = asyncHandler(async (req, res) => {
       try {
          parsed = JSON.parse(rawAnswer);
 
-         // Validate and sanitize the response
-         if (parsed.detected_location) {
-            // Ensure detected_location has all required fields
-            parsed.detected_location = {
-               name: parsed.detected_location.name || null,
-               type: parsed.detected_location.type || null,
-               confidence: parsed.detected_location.confidence || null,
-               action: parsed.detected_location.action || null
-            };
-         }
+         // Clean up detected_location
+         parsed.detected_location = {
+            name: parsed.detected_location?.name || null,
+            type: parsed.detected_location?.type || null,
+            confidence: parsed.detected_location?.confidence || null,
+            action: parsed.detected_location?.action || null
+         };
 
-         // Ensure navigation fields exist
          parsed.navigationGuide = parsed.navigationGuide || null;
-         parsed.navigationPath = parsed.navigationPath || null;
 
-         // Validate navigationPath structure if it exists
-         if (parsed.navigationPath && Array.isArray(parsed.navigationPath)) {
-            parsed.navigationPath = parsed.navigationPath.map(step => ({
-               step: step.step || null,
+         if (Array.isArray(parsed.navigationPath)) {
+            parsed.navigationPath = parsed.navigationPath.map((step, i) => ({
+               step: step.step ?? i + 1,
                instruction: step.instruction || null,
                direction: step.direction || null,
                distance: step.distance || null,
                landmark: step.landmark || null
             }));
+         } else {
+            parsed.navigationPath = null;
          }
 
       } catch (e) {
-         console.warn('Failed to parse AI JSON response, falling back to raw answer.');
-         parsed.answer = rawAnswer; // fallback plain text
+         console.warn('Failed to parse AI JSON response:', e);
+         parsed.answer = rawAnswer;
       }
 
       res.json({

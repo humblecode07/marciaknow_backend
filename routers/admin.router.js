@@ -5,9 +5,14 @@ const router = express.Router();
 const { authenticateToken, verifyNotDisabled } = require('../middleware/auth')
 
 /* GET */
-router.get('/', authenticateToken, verifyNotDisabled, admin_controller.getAdmins);
-router.get('/:adminID', authenticateToken, verifyNotDisabled, admin_controller.getAdmin);
+router.get('/', admin_controller.getAdmins);
+
+// IMPORTANT: Specific routes must come BEFORE parameterized routes
+router.get('/recent-logs', admin_controller.getRecentAdminLogs);
 router.get('/profile/:filename', admin_controller.getProfileImage);
+
+// Parameterized routes should come after specific routes
+router.get('/:adminID', authenticateToken, verifyNotDisabled, admin_controller.getAdmin);
 
 /* POST request user create */
 router.post('/register', upload.single('image'), authenticateToken, verifyNotDisabled, admin_controller.register);

@@ -80,6 +80,57 @@ exports.getAdmin = asyncHandler(async (req, res, next) => {
    }
 })
 
+exports.getRecentAdminLogs = asyncHandler(async (req, res, next) => {
+   const limit = parseInt(req.query.limit) || 10;
+
+   try {
+      // Get admins with recent activity, prioritizing those with system logs
+      const admins = await Admin.find({
+         $or: [
+            { 'systemLogs.kiosk.dateOfChange': { $exists: true } },
+            { 'systemLogs.mapEditor.room.dateOfChange': { $exists: true } },
+            { 'systemLogs.mapEditor.building.dateOfChange': { $exists: true } },
+            { lastLogin: { $exists: true } }
+         ]
+      })
+         .select('full_name email status lastLogin systemLogs joined')
+         // Remove the problematic .sort() from the MongoDB query
+         .limit(limit * 3); // Get more results to sort in memory
+
+      // Sort by most recent activity in JavaScript
+      const sortedAdmins = admins.sort((a, b) => {
+         const getLatestDate = (admin) => {
+            const dates = [];
+
+            if (admin.systemLogs?.kiosk?.dateOfChange) {
+               dates.push(new Date(admin.systemLogs.kiosk.dateOfChange));
+            }
+            if (admin.systemLogs?.mapEditor?.room) {
+               admin.systemLogs.mapEditor.room.forEach(room => {
+                  if (room.dateOfChange) dates.push(new Date(room.dateOfChange));
+               });
+            }
+            if (admin.systemLogs?.mapEditor?.building) {
+               admin.systemLogs.mapEditor.building.forEach(building => {
+                  if (building.dateOfChange) dates.push(new Date(building.dateOfChange));
+               });
+            }
+            if (admin.lastLogin) dates.push(new Date(admin.lastLogin));
+            if (admin.joined) dates.push(new Date(admin.joined));
+
+            return dates.length > 0 ? Math.max(...dates) : 0;
+         };
+
+         return getLatestDate(b) - getLatestDate(a);
+      }).slice(0, limit); // Apply the actual limit after sorting
+
+      res.json(sortedAdmins);
+   } catch (error) {
+      console.error('Error fetching recent admin logs:', error);
+      res.status(500).json({ message: 'Failed to fetch recent admin logs' });
+   }
+});
+
 exports.register = asyncHandler(async (req, res, next) => {
    const { full_name, email, password, contact } = req.body;
 
