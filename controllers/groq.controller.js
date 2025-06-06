@@ -108,6 +108,16 @@ exports.ask = asyncHandler(async (req, res) => {
          parsed.answer = rawAnswer;
       }
 
+      // Add this after you get the response from Groq
+      console.log('Raw AI response:', rawAnswer);
+      console.log('Parsed response:', parsed);
+      console.log('Final response being sent:', {
+         answer: parsed.answer,
+         detected_location: parsed.detected_location,
+         navigationGuide: parsed.navigationGuide,
+         navigationPath: parsed.navigationPath
+      });
+
       res.json({
          answer: parsed.answer,
          detected_location: parsed.detected_location,
