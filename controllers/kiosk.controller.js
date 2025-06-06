@@ -99,49 +99,124 @@ exports.add_kiosk = asyncHandler(async (req, res) => {
 
 exports.edit_kiosk = asyncHandler(async (req, res) => {
    const { kioskID } = req.params;
-
    try {
       const kiosk = await Kiosk.findOne({ kioskID });
-
       if (!kiosk) return res.status(404).json({ message: "Kiosk not found." });
 
       const changes = {};
+      let coordinatesChanged = false;
+      let newCoordinates = {};
 
+      // Track name changes
       if (req.body.name && req.body.name !== kiosk.name) {
          changes.name = { old: kiosk.name, new: req.body.name };
          kiosk.name = req.body.name;
       }
+
+      // Track location changes
       if (req.body.location && req.body.location !== kiosk.location) {
          changes.location = { old: kiosk.location, new: req.body.location };
          kiosk.location = req.body.location;
       }
+
+      // Track coordinate changes
       if (req.body.coordinates) {
          const coords = {};
          if (req.body.coordinates.x && req.body.coordinates.x !== kiosk.coordinates.x) {
             coords.x = { old: kiosk.coordinates.x, new: req.body.coordinates.x };
             kiosk.coordinates.x = req.body.coordinates.x;
+            newCoordinates.x = req.body.coordinates.x;
+            coordinatesChanged = true;
          }
          if (req.body.coordinates.y && req.body.coordinates.y !== kiosk.coordinates.y) {
             coords.y = { old: kiosk.coordinates.y, new: req.body.coordinates.y };
             kiosk.coordinates.y = req.body.coordinates.y;
+            newCoordinates.y = req.body.coordinates.y;
+            coordinatesChanged = true;
          }
          if (Object.keys(coords).length > 0) {
             changes.coordinates = coords;
          }
       }
 
+      // Save the kiosk first
       await kiosk.save();
 
-      const adminId = extractAdminId(req);
+      // If coordinates changed, update related buildings and rooms
+      if (coordinatesChanged) {
+         // Use the current coordinates if only one axis was updated
+         const updatedCoords = {
+            x: newCoordinates.x || kiosk.coordinates.x,
+            y: newCoordinates.y || kiosk.coordinates.y
+         };
 
+         // Find all buildings that have navigation paths or rooms for this kiosk
+         const buildings = await Building.find({
+            $or: [
+               { [`navigationPath.${kioskID}`]: { $exists: true } },
+               { [`existingRoom.${kioskID}`]: { $exists: true } }
+            ]
+         });
+
+         // Update each building
+         for (const building of buildings) {
+            let buildingUpdated = false;
+
+            // Update building's navigation path if it exists for this kiosk
+            if (building.navigationPath && building.navigationPath.get(kioskID)) {
+               const navPath = building.navigationPath.get(kioskID);
+               if (navPath && navPath.length > 0) {
+                  navPath[0].x = updatedCoords.x;
+                  navPath[0].y = updatedCoords.y;
+                  building.navigationPath.set(kioskID, navPath);
+                  buildingUpdated = true;
+               }
+            }
+
+            // Update rooms' navigation paths if they exist for this kiosk
+            if (building.existingRoom && building.existingRoom.get(kioskID)) {
+               const rooms = building.existingRoom.get(kioskID);
+               for (const room of rooms) {
+                  if (room.navigationPath && room.navigationPath.length > 0) {
+                     room.navigationPath[0].x = updatedCoords.x;
+                     room.navigationPath[0].y = updatedCoords.y;
+                     buildingUpdated = true;
+                  }
+               }
+               if (buildingUpdated) {
+                  building.existingRoom.set(kioskID, rooms);
+               }
+            }
+
+            // Save the building if any updates were made
+            if (buildingUpdated) {
+               await building.save();
+            }
+         }
+
+         // Add coordinate sync info to changes log
+         if (buildings.length > 0) {
+            changes.coordinateSync = {
+               buildingsUpdated: buildings.length,
+               newCoordinates: updatedCoords
+            };
+         }
+      }
+
+      const adminId = extractAdminId(req);
       if (adminId) {
-         systemLogService.logKioskActivity(adminId, kiosk, 'edit', Object.keys(changes).length > 0 ? changes : null);
+         systemLogService.logKioskActivity(adminId, kiosk, 'edit',
+            Object.keys(changes).length > 0 ? changes : null);
       }
 
       res.status(200).json({
          success: true,
          message: "Kiosk updated successfully!",
-         data: kiosk
+         data: kiosk,
+         coordinateSync: coordinatesChanged ? {
+            buildingsAffected: buildings?.length || 0,
+            coordinates: newCoordinates
+         } : null
       });
    } catch (error) {
       res.status(400).json({

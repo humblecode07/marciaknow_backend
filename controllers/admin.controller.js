@@ -134,11 +134,6 @@ exports.getRecentAdminLogs = asyncHandler(async (req, res, next) => {
 exports.register = asyncHandler(async (req, res, next) => {
    const { full_name, email, password, contact } = req.body;
 
-   console.log('Request body:', req.body);
-   console.log('Uploaded file:', req.file);
-   console.log('All files:', req.files);
-   console.log('Content-Type:', req.headers['content-type']);
-
    if (!req.file) {
       console.log('❌ No file received in req.file');
       console.log('Available fields in req:', Object.keys(req));
