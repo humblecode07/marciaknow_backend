@@ -16,6 +16,7 @@ router.get('/:adminID', authenticateToken, verifyNotDisabled, admin_controller.g
 
 /* POST request user create */
 router.post('/register', upload.single('image'), authenticateToken, verifyNotDisabled, admin_controller.register);
+router.post('/ping', authenticateToken, verifyNotDisabled, admin_controller.pingAdmin);
 
 /* PATCH request user create */
 router.patch('/:adminId/field', authenticateToken, verifyNotDisabled, admin_controller.updateAdminField);

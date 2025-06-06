@@ -45,7 +45,8 @@ const adminSchema = new mongoose.Schema({
             dateOfChange: { type: Date }
          }]
       }
-   }
+   },
+   lastSeen: { type: Date, default: null },
 });
 
 adminSchema.index({ 'systemLogs.mapEditor.building.dateOfChange': -1 });

@@ -556,3 +556,14 @@ exports.adminDelete = asyncHandler(async (req, res, next) => {
       return res.status(500).json({ message: 'Something went wrong.' });
    }
 });
+
+exports.pingAdmin = asyncHandler(async (req, res, next) => {
+   try {
+      const adminId = req.user.id; // assuming your token contains admin ID
+      await Admin.updateOne({ _id: adminId }, { lastSeen: new Date() });
+      res.sendStatus(200);
+   } catch (error) {
+      console.error('Ping error:', error);
+      res.status(500).json({ message: 'Server error during ping' });
+   }
+});
