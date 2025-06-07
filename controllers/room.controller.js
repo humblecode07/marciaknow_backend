@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const asyncHandler = require('express-async-handler');
 const room_service = require('../services/room.service');
 const systemLogService = require('../services/systemLog.service');
+const imageService = require('../services/image.service');
 
 const extractAdminId = (req) => {
    return req.user?.id || req.adminId;
