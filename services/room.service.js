@@ -3,75 +3,78 @@ const Kiosk = require('../models/kiosk.model');
 const asyncHandler = require('express-async-handler');
 const imageService = require('./image.service');
 
-exports.add_room = asyncHandler(async (buildingID, kioskID, files, roomData) => {
+exports.add_room = asyncHandler(async (buildingID, files, roomData) => {
    try {
       const building = await Building.findById(buildingID);
       if (!building) throw new Error("Building not found");
 
-      const kiosk = await Kiosk.findOne({ kioskID });
-      if (!kiosk) throw new Error("Selected kiosk not found");
+      console.log(roomData);
 
-      // 🔹 Get all kioskIDs in the system
-      const allKioskIDs = (await Kiosk.find({}, 'kioskID').lean()).map(k => k.kioskID);
-
+      // Process uploaded images
       const imageData = files?.length ? await imageService.process_images(files) : [];
 
-      const navigationGuide = roomData.navigationGuide
-         ? JSON.parse(roomData.navigationGuide).map(guide => ({
-            icon: guide.icon,
-            description: guide.description
-         }))
-         : [];
-
+      // Parse navigation data if provided
       let navigationPath = [];
-      if (roomData.path) {
+      let navigationGuide = [];
+
+      if (roomData.navigationPath) {
          try {
-            navigationPath = JSON.parse(roomData.path);
+            navigationPath = JSON.parse(roomData.navigationPath);
          } catch (err) {
             console.error('Invalid navigation path JSON:', err);
          }
       }
 
-      // 🔹 Loop through all kioskIDs to add room to each
-      for (const kID of allKioskIDs) {
-         let rooms = building.existingRoom.get(kID) || [];
-
-         if (kID === kioskID) {
-            // Full data only for the selected kiosk
-            rooms.push({
-               name: roomData.name,
-               description: roomData.description,
-               floor: roomData.floor,
-               navigationPath,
-               navigationGuide,
-               image: imageData,
-               addedByDate: new Date(),
-               editedByDate: new Date()
-            });
-         } else {
-            // Basic info only for other kiosks
-            rooms.push({
-               name: roomData.name,
-               description: roomData.description,
-               floor: roomData.floor,
-               image: imageData,
-               addedByDate: new Date(),
-               editedByDate: new Date()
-            });
+      if (roomData.navigationGuide) {
+         try {
+            navigationGuide = JSON.parse(roomData.navigationGuide);
+         } catch (err) {
+            console.error('Invalid navigation guide JSON:', err);
          }
-
-         building.existingRoom.set(kID, rooms);
       }
 
-      building.markModified('existingRoom');
+      // Create new room object
+      const newRoom = {
+         id: roomData.id || `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+         x: parseInt(roomData.x),
+         y: parseInt(roomData.y),
+         width: parseInt(roomData.width),
+         height: parseInt(roomData.height),
+         label: roomData.label,
+         color: roomData.color,
+         floor: parseInt(roomData.floor),
+         navigationPath: navigationPath,
+         navigationGuide: navigationGuide,
+         images: imageData, // Using your imageSchema structure
+         imageIds: [], // Can be used for reference if needed
+         createdAt: new Date(),
+         updatedAt: new Date()
+      };
+
+      // Get existing rooms for the floor or create new array
+      const floorKey = roomData.floor.toString();
+      let floorRooms = building.floors.get(floorKey) || [];
+
+      // Add the new room
+      floorRooms.push(newRoom);
+      building.floors.set(floorKey, floorRooms);
+
+      // Update totals
+      building.totalRooms += 1;
+      if (!building.floors.has(floorKey)) {
+         building.totalFloors = Math.max(building.totalFloors, parseInt(roomData.floor));
+      }
+
+      building.updatedAt = new Date();
+      building.markModified('floors');
       await building.save();
 
       return {
-         message: 'Room added to all kiosks successfully',
-         kioskID, // the one with full data
+         message: 'Room added successfully',
+         room: newRoom,
+         buildingID: buildingID
       };
-   }
-   catch (error) {
+   } catch (error) {
       console.error("Error adding room:", error);
       throw error;
    }

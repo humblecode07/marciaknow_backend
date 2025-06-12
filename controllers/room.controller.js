@@ -123,18 +123,18 @@ exports.get_room_from_building = asyncHandler(async (req, res) => {
 
 exports.add_room = asyncHandler(async (req, res) => {
    try {
-      const { buildingID, kioskID } = req.params;
+      const { buildingID } = req.params;
       const files = req.files;
+      const roomData = req.body;
 
-      const room = await room_service.add_room(buildingID, kioskID, files, req.body);
+      const result = await room_service.add_room(buildingID, files, roomData);
 
       return res.status(201).json({
          success: true,
          message: "Room added successfully",
-         data: room
+         data: result
       });
-   }
-   catch (error) {
+   } catch (error) {
       res.status(400).json({
          success: false,
          message: error.message

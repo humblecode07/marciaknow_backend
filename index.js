@@ -22,6 +22,7 @@ const qrScanLogRouter = require('./routers/qrScanLog.router');
 const destinationLogRoutes = require('./routers/destinationLog.router');
 const chatbotRoutes = require('./routers/chatbot.router');
 const feedbackRoutes = require('./routers/feedback.router');
+const buildingPathRoutes = require('./routers/buildingPath.router');
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use("/qrscan", qrScanLogRouter);
 app.use("/destinationlog", destinationLogRoutes);
 app.use('/chatbot', chatbotRoutes);
 app.use('/feedback', feedbackRoutes);
+app.use('/buildingPath', buildingPathRoutes);
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {

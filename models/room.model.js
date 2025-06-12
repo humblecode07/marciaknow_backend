@@ -3,21 +3,24 @@ const navigationGuideSchema = require("./navigationGuide.model");
 const imageSchema = require("./image.model");
 
 const roomSchema = new mongoose.Schema({
-   name: { type: String, required: true },
-   description: { type: String, required: false },
+   id: { type: String, required: true }, // matches your JSON format
+   x: { type: Number, required: true },
+   y: { type: Number, required: true },
+   width: { type: Number, required: true },
+   height: { type: Number, required: true },
+   label: { type: String, required: true }, // "Room 1", "Room 2", etc.
+   color: { type: String, required: true }, // hex color codes
    floor: { type: Number, required: true },
-   image: [imageSchema],
-   navigationPath: [
-      {
-         x: { type: Number, required: true },
-         y: { type: Number, required: true }
-      }
-   ],
+   navigationPath: [{
+      x: { type: Number, required: true },
+      y: { type: Number, required: true }
+   }],
    navigationGuide: [navigationGuideSchema],
-   addedBy: { type: String, required: false },
-   addedByDate: { type: Date, default: Date.now },
-   editedBy: { type: String, required: false },
-   editedByDate: { type: Date, default: Date.now }
+   images: [imageSchema], 
+   imageIds: [{ type: String }], 
+   createdAt: { type: Date, default: Date.now },
+   updatedAt: { type: Date, default: Date.now },
+   description: { type: String, required: false }
 });
 
 roomSchema.pre("save", function (next) {

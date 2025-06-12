@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
-const AutoIncrement = require("mongoose-sequence")(mongoose);
 const navigationPathSchema = require("./navigationPath.model");
 const navigationGuideSchema = require("./navigationGuide.model");
 const imageSchema = require("./image.model");
 const roomSchema = require("./room.model");
+const stairsSchema = require("./stairs.model");
 
 const buildingSchema = new mongoose.Schema({
    id: { type: Number },
@@ -11,7 +11,7 @@ const buildingSchema = new mongoose.Schema({
    description: { type: String, required: false },
    path: { type: String, required: true },
    numberOfFloor: { type: Number, required: true },
-   existingRoom: {
+   rooms: {
       type: Map,
       of: [roomSchema],
       default: {}
@@ -27,8 +27,12 @@ const buildingSchema = new mongoose.Schema({
       of: [navigationGuideSchema], // one navigation guide per kiosk
       default: {}
    },
+   stairs: {
+      type: Map,
+      of: [stairsSchema], // each floor can have multiple stairs
+      default: {}
+   },
+   builderPath: { type: String, required: true },
 });
-
-buildingSchema.plugin(AutoIncrement, { inc_field: "id" })
 
 module.exports = mongoose.model("Building", buildingSchema);
