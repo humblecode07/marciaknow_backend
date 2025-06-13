@@ -32,7 +32,7 @@ const buildingSchema = new mongoose.Schema({
       of: [stairsSchema], // each floor can have multiple stairs
       default: {}
    },
-   builderPath: { type: String, required: true },
+   builderPath: { type: String, required: false },
 });
 
 module.exports = mongoose.model("Building", buildingSchema);
